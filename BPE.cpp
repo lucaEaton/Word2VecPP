@@ -145,7 +145,7 @@ std::ostream &operator<<(std::ostream &os, const std::vector<std::string> &v) {
 
 
 int main() {
-    std::cout << STE("[REMOVED]! ", SP, prefixes, suffixes) << std::endl;
+    std::cout << STE("Untouchable is a great tv show! ", SP, prefixes, suffixes) << std::endl;
 }
 
 
