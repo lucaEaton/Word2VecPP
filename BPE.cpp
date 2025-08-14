@@ -23,14 +23,19 @@ static std::vector<std::string> prefixes = {
     "trans", "super", "semi", "anti", "mid", "under", "over",
 };
 
+std::string toLower(const std::string& str) {
+    std::string result = str;
+    std::transform(result.begin(), result.end(), result.begin(),
+                   [](unsigned char c) { return std::tolower(c); });
+    return result;
+}
 
-
-std::vector<char> CTE (const std::string s) {
+std::vector<char> CTE (const std::string &s) {
     std::vector<char> v(s.begin(),s.end());
     return v;
 }
 
-std::vector<std::string> WTE(const std::string s, std::vector<char> sp) {
+std::vector<std::string> WTE(const std::string& s, std::vector<char> sp) {
     std::vector<std::string> v;
     std::string pt;
     for (char c  : s) {
@@ -54,10 +59,10 @@ std::vector<std::string> WTE(const std::string s, std::vector<char> sp) {
 }
 
 //substring tokenization method
-std::vector<std::string> STE(const std::string s,
-                             const std::vector<char> sp,
-                             const std::vector<std::string> pre,
-                             const std::vector<std::string> suff)
+std::vector<std::string> STE(const std::string& s,
+                             const std::vector<char>& sp,
+                             const std::vector<std::string> &pre,
+                             const std::vector<std::string> &suff)
 {
     // "Untouchable is a pretty good TV show."
     // WTE(sentence) -> ["Untouchable", "is", ...]
@@ -68,45 +73,49 @@ std::vector<std::string> STE(const std::string s,
 
     std::vector<std::string> vP = WTE(s, sp);
     std::vector<std::string> brk;
-
     // vP = ["Untouchable", "is", "a", "pretty", "good", "TV", "show", "."]
     // vP[0] = "Untouchable" -- check first 4, includes pre, use substring to catch the pre, add "##" and push
-    for (size_t i = 0; i < vP.size(); i++) {
-        std::string tgt = vP[i];
-        std::string pref;
+    for (const auto& tgt : vP) {
+        const std::string lower = toLower(tgt);
+
+        if (tgt.size() <= 4) {
+            brk.push_back(tgt);
+            continue;
+        }
+
         bool matched = false;
-        if (tgt.size() > 4) {
-            for (size_t j = 0; j < tgt.size(); j++) {
-                std::string currWordPre  = tgt.substr(0, 5);
-                std::string currWordSuff = tgt.substr(tgt.size() - 5);
+        std::string currWordPre, currWordSuff;
 
-                auto it  = std::find(pre.begin(),  pre.end(),  currWordPre);
-                auto it2 = std::find(suff.begin(), suff.end(), currWordSuff);
+        //For Derek -- Checks for Prefix
+        auto preIt = std::find_if(pre.begin(), pre.end(), [&](const std::string& p){
+            return lower.rfind(p, 0) == 0;
+        });
+        if (preIt != pre.end()) {
+            currWordPre = *preIt;
+            matched = true;
+        }
 
-                if (it != pre.end()) {
-                    const std::string& preFix = *it;
+        //For Derek -- Checks for Suffix
+        auto suffIt = std::find_if(suff.begin(), suff.end(), [&](const std::string& x){
+            if (x.size() > lower.size()) return false;
+            return lower.compare(lower.size() - x.size(), x.size(), x) == 0;
+        });
+        if (suffIt != suff.end()) {
+            currWordSuff = *suffIt;
+            matched = true;
+        }
 
-                    brk.push_back("##" + preFix);
-                    brk.push_back(tgt.substr(preFix.size()));
-                    pref = preFix;
-                    matched = true;
-                }
-                if (it2 != suff.end()) {
-                    const std::string& suffFix = *it2;
+        //For Derek -- Puts the pieces together
+        if (matched) {
 
-                    if (matched) {
-                        std::string middle = tgt.substr(pref.size(),
-                            tgt.size() - pref.size() - suffFix.size());
-                        brk.back() = middle;
-                    } else {
-                        std::string stem = tgt.substr(0, tgt.size() - suffFix.size());
-                        brk.push_back(stem);
-                    }
-                    brk.push_back(suffFix + "##");
-                    matched = true;
-                }
-            }
-        }else {
+            if (!currWordPre.empty()) brk.push_back("##" + currWordPre);
+            std::size_t start = currWordPre.size();
+            std::size_t endTrim = currWordSuff.size();
+            std::size_t midLen = tgt.size() - start - endTrim;
+            if (midLen > 0) brk.push_back(tgt.substr(start, midLen));
+            if (!currWordSuff.empty()) brk.push_back(currWordSuff + "##");
+        } else {
+
             brk.push_back(tgt);
         }
     }
@@ -136,9 +145,8 @@ std::ostream &operator<<(std::ostream &os, const std::vector<std::string> &v) {
 
 
 int main() {
-    std::cout << STE("Untouchable is a pretty good TV show.", SP,suffixes,prefixes) << std::endl;
+    std::cout << STE("[REMOVED]! ", SP, prefixes, suffixes) << std::endl;
 }
-
 
 
 
