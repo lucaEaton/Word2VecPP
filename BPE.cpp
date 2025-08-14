@@ -68,33 +68,42 @@ std::vector<std::string> STE(const std::string s,
 
     std::vector<std::string> vP = WTE(s, sp);
     std::vector<std::string> brk;
+
     // vP = ["Untouchable", "is", "a", "pretty", "good", "TV", "show", "."]
     // vP[0] = "Untouchable" -- check first 4, includes pre, use substring to catch the pre, add "##" and push
     for (size_t i = 0; i < vP.size(); i++) {
         std::string tgt = vP[i];
-        std::cout << tgt.size() << std::endl;
+        std::string pref;
+        bool matched = false;
         if (tgt.size() > 4) {
             for (size_t j = 0; j < tgt.size(); j++) {
-                std::string currWordPre = tgt.substr(0, 5); // first 4 letters
-                std::string currWordSuff = tgt.substr(tgt.size() - 5, tgt.size()); // last 4 letters
+                std::string currWordPre  = tgt.substr(0, 5);
+                std::string currWordSuff = tgt.substr(tgt.size() - 5);
 
-                auto it = std::find(pre.begin(), pre.end(), currWordPre);
+                auto it  = std::find(pre.begin(),  pre.end(),  currWordPre);
+                auto it2 = std::find(suff.begin(), suff.end(), currWordSuff);
+
                 if (it != pre.end()) {
                     const std::string& preFix = *it;
 
                     brk.push_back("##" + preFix);
-                    brk.push_back(currWordPre.substr(preFix.size()));
-
-                    // "##un", "touch"
+                    brk.push_back(tgt.substr(preFix.size()));
+                    pref = preFix;
+                    matched = true;
                 }
-                auto it2 = std::find(suff.begin(), suff.end(), currWordSuff);
                 if (it2 != suff.end()) {
-                    const std::string& suffFix = *it;
+                    const std::string& suffFix = *it2;
 
-                    brk.push_back(suffFix+ "##");
-
-
-                    //"Un##","touch","able##"
+                    if (matched) {
+                        std::string middle = tgt.substr(pref.size(),
+                            tgt.size() - pref.size() - suffFix.size());
+                        brk.back() = middle;
+                    } else {
+                        std::string stem = tgt.substr(0, tgt.size() - suffFix.size());
+                        brk.push_back(stem);
+                    }
+                    brk.push_back(suffFix + "##");
+                    matched = true;
                 }
             }
         }else {
