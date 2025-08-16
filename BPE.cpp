@@ -34,6 +34,7 @@ std::string toLower(const std::string& str) {
     return result;
 }
 
+
 //Char tokenization method
 //Given a string/sentence, creates a vector of characters on the given string
 std::vector<char> CTE (const std::string &s) {
