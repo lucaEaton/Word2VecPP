@@ -105,19 +105,18 @@ std::vector<std::string> STE(const std::string& s,
         }
         //For Derek -- Puts the pieces together
         if (matched) {
-            if (!currWordPre.empty()) brk.push_back("##" + currWordPre);
+            if (!currWordPre.empty()) brk.push_back(currWordPre + "##");
             std::size_t start = currWordPre.size();
             std::size_t endTrim = currWordSuff.size();
             std::size_t midLen = tgt.size() - start - endTrim;
             if (midLen > 0) brk.push_back(tgt.substr(start, midLen));
-            if (!currWordSuff.empty()) brk.push_back(currWordSuff + "##");
+            if (!currWordSuff.empty()) brk.push_back("##" + currWordSuff);
         } else {
             brk.push_back(tgt);
         }
     }
     return brk;
 }
-
 
 //Printing vector of chars
 std::ostream &operator<<(std::ostream &os, const std::vector<char> &v) {
@@ -141,18 +140,12 @@ std::ostream &operator<<(std::ostream &os, const std::vector<std::string> &v) {
     return os;
 }
 
-//Notes - Case Handling in encoding
-// NEXT STEP: CONVERT TOKENS INTO IDS AND REMAP THEM BACK INTO WORDS
-//
-
-
-
-
-
-
 //Debug Main Function
 int main() {
-    //std::cout << STE("", SP, prefixes, suffixes) << std::endl;
+    std::string promptedText = "Amazing show we got here! ";
+    std::vector<std::string> tokenizedText =  STE(promptedText, SP, prefixes, suffixes);
+
+    std::cout << tokenizedText << std::endl;
 
 }
 
