@@ -8,14 +8,11 @@
 #include <sstream>
 #include <iostream>
 #include <set>
-#include <tuple>
 
 //Read Word by word of the text file
 //Check if word exists within the outFile
 //If not store within a unique ID
 //Continue until we have all unique ID and words
-
-
 
 std::string toLower(const std::string& str) {
     std::string result = str;
