@@ -7,7 +7,7 @@
 
 
 
-class BPE {
+class Tokenizer {
 
 };
 

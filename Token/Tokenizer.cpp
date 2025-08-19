@@ -2,12 +2,14 @@
 // Created by luca eaton and derek zang on 8/14/25.
 //
 
-#include "BPE.h"
+#include "Tokenizer.h"
 #include <iostream>
 #include <fstream>
+#include <utility>
 #include <vector>
 #include <ranges>
 #include <string>
+std::string toLower(const std::string& s);
 
 
 //Special Character Dataset
@@ -147,51 +149,69 @@ std::vector<std::string> STE(const std::string& s,
     return brk;
 }
 
-/*
- *Read "Vocab" file
- *Take returned vector from STE
- *convert provided words into tokens the token_ids
+
+
+/**
  *
- *------------
- *My Approach
- *------------
+ * @param tokenVector Our tokenized sentence/words
+ * @param in Provided dictionary of tokens/token ids
  *
- *Loop through file
- *Check if indexed token exists in a line from within the file.
- *Use substr() to gather the # and parse to an int
+ *Read dictionary file
+ *Take returned vector, usually from our STE() method
+ *Convert provided words into tokens the tokenIDS
  *
- *CURRENT ERRORS:
- *
- *Doesn't fully replace the token with the given tokenID, it returns the tokenIDs sorted
- *Due to it reading the file line by line, possibly it jus takes the first one it sees in this case
- *"##ing" as it is (45) and pushes it to the top, same for the rest.
+ * @return tokenIDs : The token IDs of each provided token.
  */
 std::vector<int> encodeTokens(std::vector<std::string> tokenVector, const std::string& in) {
-    std::vector<std::string> tokens = tokenVector;
+    std::vector<std::string> tokens = std::move(tokenVector);
+    std::unordered_map<std::string, int> tMap;
     std::ifstream inFile(in);
-    std::vector<int> tokenID;
     if (!inFile.is_open()) {
         std::cerr << "Could not open file: " << std::endl;
         return std::vector<int>(false);
     }
 
-    std::cout << "I passed" << std::endl;
+    std::string line;
+    while (std::getline(inFile, line)) {
+        size_t pos = line.find(':');
+        std::string currentTokenID = line.substr(0, pos);
+        std::string currentToken = line.substr(pos + 1);
+        tMap[toLower(currentToken)] = std::stoi(currentTokenID);
+    }
+
+    std::vector<int> tokenIDs;
+    for(const auto& token : tokens) {
+        if (tMap.count(toLower(token))) {
+            tokenIDs.push_back(tMap[toLower(token)]);
+        }
+    }
+    return tokenIDs;
+}
+
+std::vector<std::string> decodeTokens(std::vector<int> tID, const std::string& in) {
+    std::vector<int> tokenIDs= std::move(tID);
+    std::unordered_map<int, std::string> tMap;
+    std::ifstream inFile(in);
+    if (!inFile.is_open()) {
+        std::cerr << "Could not open file: " << std::endl;
+        return std::vector<std::string>(false);
+    }
 
     std::string line;
     while (std::getline(inFile, line)) {
-        std::cout << "Line: [" << line << "]" << std::endl;
-        std::string currentTokenID = line.substr(0, line.find(':'));
-        std::string token = line.substr(line.find(':') + 1);
-
-        for(const auto& currentToken : tokens) {
-            if (currentToken == token) {
-                tokenID.push_back(std::stoi(currentTokenID));
-            }
-        }
+        size_t pos = line.find(':');
+        std::string currentTokenID = line.substr(0, pos);
+        std::string currentToken = line.substr(pos + 1);
+        tMap[std::stoi(currentTokenID)] = toLower(currentToken);
     }
 
-
-    return tokenID;
+    std::vector<std::string> tokens;
+    for (const auto& currentTokenIDs : tokenIDs) {
+        if (tMap.count(currentTokenIDs)) {
+            tokens.push_back(tMap[currentTokenIDs]);
+        }
+    }
+    return tokens;
 }
 
 //Printing vector of chars
@@ -227,17 +247,22 @@ std::ostream &operator<<(std::ostream &os, const std::vector<int> &v) {
 }
 
 //Debug Main Function
+/*
 int main() {
-    std::string promptedText = "Amazing show we got here! ";
+    std::string promptedText = "Doggy";
     std::vector<std::string> tokenizedText =  STE(promptedText, SP, prefixes, suffixes);
+    std::vector<int> tokenIDs = encodeTokens(tokenizedText, "Files/VocabTokens");
+    std::vector<std::string> decodedTokens = decodeTokens(tokenIDs, "Files/VocabTokens");
 
-    std::cout << tokenizedText << std::endl;
+    std::cout << "Tokens            : " << tokenizedText << std::endl;
 
-    std:std::vector<int> tokenIDs = encodeTokens(tokenizedText, "Files/Vocab");
 
-    std::cout << tokenIDs << std::endl;
+    std::cout << "Encoded Token IDS : " << tokenIDs << std::endl;
+
+    std::cout << "Decoded Token IDS : " << decodedTokens << std::endl;
 }
 
+*/
 
 
 
