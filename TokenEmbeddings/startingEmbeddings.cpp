@@ -54,8 +54,12 @@ private:
     unsigned long long seed;
 };
 
+
+//debug main statement
+/*
 int main() {
-    startingEmbeddings emb("/Users/lucastallion/CLionProjects/Tokenizer-BPE/Files/Vocab.txt","/Users/lucastallion/CLionProjects/Tokenizer-BPE/Files/VocabEmbeddings.txt", 10, -1.0, 1.0, 1353);
+    startingEmbeddings emb("/Users/lucastallion/CLionProjects/Tokenizer-BPE/Files/Vocab.txt","/Users/lucastallion/CLionProjects/Tokenizer-BPE/Files/VocabEmbeddings.txt", 100, -1.0, 1.0, 1353);
     emb.generate();
     return 0;
 }
+*/
