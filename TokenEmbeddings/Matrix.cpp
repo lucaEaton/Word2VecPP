@@ -142,7 +142,9 @@ const vector<vector<double>>& Matrix::getMatrix() {
     return data;
 }
 
-//Debug Main Function
+//Need Activation Methods
+
+/*
 int main() {
     Matrix A(2, 1);
     Matrix B(2, 2);
@@ -172,7 +174,7 @@ int main() {
 
     return 0;
 }
-
+*/
 
 
 

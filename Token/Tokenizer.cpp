@@ -8,6 +8,7 @@
 #include <utility>
 #include <vector>
 #include <ranges>
+#include <sstream>
 #include <string>
 std::string toLower(const std::string& s);
 
@@ -55,8 +56,6 @@ std::vector<char> CTE (const std::string &s) {
     std::vector<char> v(s.begin(),s.end());
     return v;
 }
-
-
 /**
  * Word tokenization method
  *
@@ -89,7 +88,6 @@ std::vector<std::string> WTE(const std::string& s, std::vector<char> sp) {
     }
     return v;
 }
-
 /**
  * Substring tokenization method
  *
@@ -148,13 +146,10 @@ std::vector<std::string> STE(const std::string& s,
     }
     return brk;
 }
-
-
-
 /**
  *
  * @param tokenVector Our tokenized sentence/words
- * @param in Provided dictionary of tokens/token ids
+ * @param in Provided dictionary of tokens/token ids/token embeddings
  *
  *Read dictionary file
  *Take returned vector, usually from our STE() method
@@ -168,14 +163,15 @@ std::vector<int> encodeTokens(std::vector<std::string> tokenVector, const std::s
     std::ifstream inFile(in);
     if (!inFile.is_open()) {
         std::cerr << "Could not open file: " << std::endl;
-        return std::vector<int>(false);
+        return {};
     }
 
     std::string line;
     while (std::getline(inFile, line)) {
         size_t pos = line.find(':');
+        size_t vPos = line.find('<TAB>');
         std::string currentTokenID = line.substr(0, pos);
-        std::string currentToken = line.substr(pos + 1);
+        std::string currentToken = line.substr(pos+1, vPos - (pos + 5));
         tMap[toLower(currentToken)] = std::stoi(currentTokenID);
     }
 
@@ -187,21 +183,32 @@ std::vector<int> encodeTokens(std::vector<std::string> tokenVector, const std::s
     }
     return tokenIDs;
 }
-
+/**
+ *
+ * @param tID A vector of token IDs
+ * @param in Provided dictionary of tokens/token ids/token embeddings
+ *
+ * Reads our dictionary
+ * Takes the vector of Token IDs
+ * Converts IDs into tokens/words
+ *
+ * @return A decoded vector of tokens from the provided token vector
+ */
 std::vector<std::string> decodeTokens(std::vector<int> tID, const std::string& in) {
     std::vector<int> tokenIDs= std::move(tID);
     std::unordered_map<int, std::string> tMap;
     std::ifstream inFile(in);
     if (!inFile.is_open()) {
         std::cerr << "Could not open file: " << std::endl;
-        return std::vector<std::string>(false);
+        return{};
     }
 
     std::string line;
     while (std::getline(inFile, line)) {
         size_t pos = line.find(':');
+        size_t vPos = line.find('<TAB>');
         std::string currentTokenID = line.substr(0, pos);
-        std::string currentToken = line.substr(pos + 1);
+        std::string currentToken = line.substr(pos+1, vPos - (pos + 5));
         tMap[std::stoi(currentTokenID)] = toLower(currentToken);
     }
 
@@ -214,6 +221,53 @@ std::vector<std::string> decodeTokens(std::vector<int> tID, const std::string& i
     return tokens;
 }
 
+/**
+ *
+*  @param tID A vector of token IDs
+ * @param in Provided dictionary of tokens/token ids/token embeddings
+ *
+** Reads our dictionary
+ * Takes the vector of Token IDs
+ * Converts IDs into token embeddings
+ *
+ * @return Word to Vectors
+ */
+std::vector<std::vector<double>> embedToken(std::vector<int> tID, const std::string& in) {
+    std::vector<int> tokenIDs = std::move(tID);
+    std::unordered_map<int, std::vector<double>> tMap;
+
+    std::ifstream inFile(in);
+    if(!inFile.is_open()) {
+        std::cerr << "Could not open file: " << std::endl;
+        return {};
+    }
+
+    std::string line;
+    std::vector<double> emedded;
+    while(std::getline(inFile, line)){
+        size_t vPos = line.find('<TAB>');
+        size_t tPos = line.find(':');
+        std::string currentTokenID = line.substr(0, tPos);
+        std::string currentTokenVectorStartingIndex = line.substr(vPos+1);
+        std::stringstream ss(currentTokenVectorStartingIndex);
+        std::vector<double> currentTokenVector;
+        double currentVector;
+        while (ss >> currentVector) {
+            currentTokenVector.push_back(currentVector);
+        }
+       tMap[std::stoi(currentTokenID)] = std::move(currentTokenVector);
+    }
+
+    std::vector<std::vector<double>> tokensEmbeddings;
+    for (int currentTokenID : tokenIDs) {
+
+        auto it = tMap.find(currentTokenID);
+        if (it != tMap.end()) {
+            tokensEmbeddings.push_back(it -> second);
+        }
+    }
+    return tokensEmbeddings;
+}
 //Printing vector of chars
 std::ostream &operator<<(std::ostream &os, const std::vector<char> &v) {
     os << "[";
@@ -246,23 +300,40 @@ std::ostream &operator<<(std::ostream &os, const std::vector<int> &v) {
     return os;
 }
 
+std::ostream& operator<<(std::ostream& os, const std::vector<double>& v) {
+    os << "[ ";
+    for (double d : v) os << d << " ";
+    os << "]";
+    return os;
+}
+
+std::ostream& operator<<(std::ostream& os, const std::vector<std::vector<double>>& vv) {
+    os << "{\n";
+    for (const auto& v : vv) {
+        os << "," << v << "\n";  // uses the vector<double> overload above
+    }
+    os << "}";
+    return os;
+}
+
 //Debug Main Function
-/*
 int main() {
-    std::string promptedText = "Doggy";
-    std::vector<std::string> tokenizedText =  STE(promptedText, SP, prefixes, suffixes);
-    std::vector<int> tokenIDs = encodeTokens(tokenizedText, "Files/VocabTokens");
-    std::vector<std::string> decodedTokens = decodeTokens(tokenIDs, "Files/VocabTokens");
+    std::string promptedText = "dog like to walk in the park";
+    std::vector<std::string> tokenizedText =  WTE(promptedText, SP);
+    std::vector<int> tokenIDs = encodeTokens(tokenizedText, R"(../Tokenizer-BPE/Files/VocabEmbeddings.txt)");
+    std::vector<std::string> decodedTokens = decodeTokens(tokenIDs, "../Tokenizer-BPE/Files/VocabEmbeddings.txt");
+    std::vector<std::vector<double>> embeddedTokens = embedToken(tokenIDs, "../Tokenizer-BPE/Files/VocabEmbeddings.txt");
 
     std::cout << "Tokens            : " << tokenizedText << std::endl;
 
-
     std::cout << "Encoded Token IDS : " << tokenIDs << std::endl;
+
+    std::cout << "Embedded Token    : "  << embeddedTokens << std::endl;
 
     std::cout << "Decoded Token IDS : " << decodedTokens << std::endl;
 }
 
-*/
+
 
 
 
