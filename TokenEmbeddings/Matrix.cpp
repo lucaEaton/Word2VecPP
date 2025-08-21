@@ -35,7 +35,6 @@ Matrix Matrix::Multiply(const Matrix& m1, const Matrix& m2) {
     for (int i = 0; i < m1.rows; i++) {
         for (int j = 0; j < m2.cols; j++) {
             m3.data[i][j] = 0;
-
             for (int k = 0; k < m1.cols; k++) {
                 m3.data[i][j] += m1.data[i][k] * m2.data[k][j];
             }
