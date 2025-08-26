@@ -19,6 +19,8 @@ class Matrix {
         static Matrix transposeMatrix(const Matrix &m);
         static Matrix broadcastMatrix(const Matrix &m1, const Matrix &m2);
 
+        double dot(const Matrix &m1) const;
+
         //Getters and Setters
         void setMatrixData(std::vector<std::vector<double>> m);
         const std::vector<std::vector<double>> &getMatrix();

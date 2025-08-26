@@ -124,6 +124,27 @@ Matrix Matrix::broadcastMatrix(const Matrix& m1, const Matrix& m2) {
     }
     return m3;
 }
+
+/**
+ * Dot Product
+ * @param m1 Matrix u wish to apply dot product with
+ * @return Dot product of both matrices
+ */
+double Matrix::dot(const Matrix& m1) const {
+    double result = 0.0;
+
+    // Make sure dimensions match!
+    if (rows != m1.rows || cols != m1.cols) {
+        throw std::invalid_argument("Matrix dimensions must match for dot product.");
+    }
+
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            result += this->data[i][j] * m1.data[i][j];
+        }
+    }
+    return result;
+}
 /**
  *
  * @param m Matrix u wish to set.
@@ -142,14 +163,12 @@ const vector<vector<double>>& Matrix::getMatrix() {
 }
 
 //Need Activation Methods
-
-/*
 int main() {
     Matrix A(2, 1);
     Matrix B(2, 2);
 
     const std::vector<std::vector<double>> vals = {
-        {1, 2},
+        {1, 5},
         {4, 5}
     };
     A.setMatrixData(vals);
@@ -160,8 +179,9 @@ int main() {
     };
     B.setMatrixData(vals2);
 
-    const auto C = Matrix::addMatrix(A,B).getMatrix();
+    const auto C = A.dot(B);
 
+    /*
     std::cout << "Result:\n";
     for (auto &row : C) {
         std::cout << "{ ";
@@ -170,10 +190,12 @@ int main() {
         }
         std::cout << "}" << "\n";
     }
+     */
 
+    std::cout << "C = " << C << std::endl;
     return 0;
 }
-*/
+
 
 
 
