@@ -1,3 +1,8 @@
+//
+// Created by luca eaton and derek zang on 8/14/25.
+//
+
+
 #ifndef TOKENIZER_H
 #define TOKENIZER_H
 
@@ -23,7 +28,7 @@ public:
     static std::vector<int> encodeTokens(std::vector<std::string> tokenVector, const std::string& inFilePath);
     static std::vector<std::string> decodeTokens(std::vector<int> tID, const std::string& inFilePath);
     static std::vector<std::vector<double>> embedToken(std::vector<int> tID, const std::string& inFilePath);
-    static std::vector<std::string> decodeEmbedToken(std::vector<std::vector<double> > tEmbed, const std::string &in);
+    static std::vector<std::string> decodeEmbedToken(const std::vector<std::vector<double> >& tEmbed, const std::string &in);
 
 private:
     static std::string toLower(const std::string& s);

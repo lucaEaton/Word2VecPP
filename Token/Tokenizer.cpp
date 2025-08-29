@@ -8,7 +8,6 @@
 #include <map>
 #include <utility>
 #include <vector>
-#include <ranges>
 #include <sstream>
 #include <string>
 std::string toLower(const std::string& s);
@@ -270,7 +269,7 @@ std::vector<std::vector<double>> Tokenizer::embedToken(std::vector<int> tID, con
 }
 /**
  *
-*  @param tID A vector of token embeddings
+*  @param tEmbed  A vector of token embeddings
  * @param in Provided dictionary of tokens/token ids/token embeddings
  *
 ** Reads our dictionary
@@ -279,7 +278,7 @@ std::vector<std::vector<double>> Tokenizer::embedToken(std::vector<int> tID, con
  *
  * @return Vector to Words
  */
-std::vector<std::string> Tokenizer::decodeEmbedToken(std::vector<std::vector<double>> tEmbed, const std::string &in){
+std::vector<std::string> Tokenizer::decodeEmbedToken(const std::vector<std::vector<double>>& tEmbed, const std::string &in){
     std::vector<std::vector<double>> tokenEmbedded = tEmbed;
     std::map<std::vector<double>,int> tMap;
     std::ifstream inFile(in);
@@ -316,6 +315,7 @@ std::vector<std::string> Tokenizer::decodeEmbedToken(std::vector<std::vector<dou
     std::vector<std::string> tokens = decodeTokens(tokensID, in); //decode the IDs easier to search
     return tokens;
 }
+
 //Stream Operators
 std::ostream &operator<<(std::ostream &os, const std::vector<char> &v) {
     os << "[";
@@ -361,6 +361,7 @@ std::ostream& operator<<(std::ostream& os, const std::vector<std::vector<double>
 
 //Debug Main Function
 
+/*
 int main() {
     std::string promptedText = "What up future king over here";
     std::vector<std::string> tokenizedText =  Tokenizer::WTE(promptedText, SP);
@@ -377,7 +378,7 @@ int main() {
     std::cout << "Decoded Token IDS From Embedding  : " << decodedTokensEmbed << std::endl;
     std::cout << "Decoded Token IDS From Tokens     : " << decodedTokens << std::endl;
 }
-
+*/
 
 
 

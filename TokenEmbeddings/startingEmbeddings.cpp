@@ -1,4 +1,7 @@
-// startingEmbeddings.cpp
+//
+// Created by luca eaton and derek zang on 8/21/25.
+//
+
 #include <fstream>
 #include <iostream>
 #include <random>
@@ -45,6 +48,7 @@ public:
             }
             out << '\n';
         }
+        std::cout << "Created Random Tokens Embeddings" << "\n";
     }
 
 private:
@@ -56,10 +60,9 @@ private:
 
 
 //debug main statement
-/*
+
 int main() {
-    startingEmbeddings emb("/Users/lucastallion/CLionProjects/Tokenizer-BPE/Files/Vocab.txt","/Users/lucastallion/CLionProjects/Tokenizer-BPE/Files/VocabEmbeddings.txt", 100, -1.0, 1.0, 1353);
+    startingEmbeddings emb("./Files/Vocab.txt","./Files/VocabEmbeddings.txt", 100, -1.0, 1.0, 1353);
     emb.generate();
     return 0;
 }
-*/

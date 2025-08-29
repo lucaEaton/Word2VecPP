@@ -1,6 +1,7 @@
 //
-// Created by luca eaton on 8/20/25.
+// Created by luca eaton and derek zang on 8/21/25.
 //
+
 
 #ifndef STARTINGEMBEDDINGS_H
 #define STARTINGEMBEDDINGS_H
