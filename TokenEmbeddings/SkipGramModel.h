@@ -14,3 +14,4 @@ class SkipGramModel {
 
 
 #endif //SKIPGRAMMODEL_H
+

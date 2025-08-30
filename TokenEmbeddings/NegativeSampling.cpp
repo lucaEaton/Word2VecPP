@@ -72,3 +72,4 @@ std::vector<int> NegativeSampling::vectorSample(const int k) const {
 }
 
 
+
