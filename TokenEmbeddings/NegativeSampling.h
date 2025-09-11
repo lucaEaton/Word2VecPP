@@ -8,11 +8,14 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#include "SkipGramModel.h"
+
 class NegativeSampling {
     public:
 
     NegativeSampling(const std::string &inFile, double power);
     int getSample() const;
+
     std::vector<int> vectorSample(int k) const;
 private:
 

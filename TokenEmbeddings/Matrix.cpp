@@ -4,6 +4,8 @@
 
 #include "Matrix.h"
 #include <iostream>
+
+#include "FileReader.h"
 using namespace std;
 /**
  * Blank Constructor Method
@@ -59,6 +61,27 @@ Matrix Matrix::addMatrix(const Matrix& m1, const Matrix& m2) {
     for (int i = 0; i < m1.rows; i++) {
         for (int j = 0; j < m2.cols; j++) {
             m3.data[i][j] += m1.data[i][j] + m2.data[i][j];
+        }
+    }
+    return m3;
+}
+/**
+ *
+ * @param m1 Matrix A
+ * @param m2 Matrix B
+ *
+ * NOTE TO SELF : For applying activations or adjusting weights
+ *
+ * @return The sum of the two given matrix's
+ */
+Matrix Matrix::subtractMatrix(const Matrix& m1, const Matrix& m2) {
+    if (m1.rows != m2.rows || m1.cols != m2.cols)
+        throw std::invalid_argument("invalid matrix size");
+
+    Matrix m3(m1.rows, m2.cols);
+    for (int i = 0; i < m1.rows; i++) {
+        for (int j = 0; j < m2.cols; j++) {
+            m3.data[i][j] -= m1.data[i][j] + m2.data[i][j];
         }
     }
     return m3;
@@ -124,7 +147,6 @@ Matrix Matrix::broadcastMatrix(const Matrix& m1, const Matrix& m2) {
     }
     return m3;
 }
-
 /**
  * Dot Product
  * @param m1 Matrix u wish to apply dot product with
@@ -145,6 +167,26 @@ double Matrix::dot(const Matrix& m1) const {
     }
     return result;
 }
+/*
+ * Dot Product for single rows
+ * @param m1 Matrix u wish to apply dot product with
+ * @return Dot product of both matrices
+ *
+ */
+double Matrix::dotRowVector(const Matrix& m1) const {
+    if (rows != 1 || m1.rows != 1 || cols != m1.cols) {
+        throw std::invalid_argument("Both must be row vectors of the same length.");
+    }
+
+    double result = 0.0;
+    for (int j = 0; j < cols; j++) {
+        result += data[0][j] * m1.data[0][j];
+    }
+    return result;
+}
+
+
+
 /**
  *
  * @param m Matrix u wish to set.
@@ -156,16 +198,59 @@ void Matrix::setMatrixData(vector<vector<double>> m) {
 }
 /**
  *
+ * @param Set of rows and col to be a certain value
+ */
+void Matrix::setValue(int r, int c, double value) {
+    data[r][c] = value;
+}
+/**
+ *
  * @return The Matrix's Data
  */
 const vector<vector<double>>& Matrix::getMatrix() {
     return data;
 }
+/**
+ *
+ * @return # of rows
+ */
+int Matrix::getRow() const {
+    return rows;
+}
+/**
+ *
+ * @return # of cols
+ */
+int Matrix::getCol() const {
+    return cols;
+}
+/**
+ *
+ * @param r Row we wish to retrieve
+ * @return the row and its values
+ */
+Matrix Matrix::getRowVector(int r) const {
+    if (r < 0 || r >= rows) {
+        throw std::out_of_range("Row index out of range");
+    }
 
-//Need Activation Methods
+    Matrix rowMatrix(1, cols);
+
+    for (int j = 0; j < cols; ++j) {
+        rowMatrix.setValue(0, j, data[r][j]);  // assuming data[row][col] layout
+    }
+
+    return rowMatrix;
+}
+
+
+ostream operator<<(const ostream & lhs, const Matrix & rhs);
+
 int main() {
     Matrix A(2, 1);
     Matrix B(2, 2);
+
+    Matrix Z = FileReader::loadEmbeddingsToMatrix("./Files/VocabEmbeddings.txt",(71294 - 5), 100);
 
     const std::vector<std::vector<double>> vals = {
         {1, 5},
@@ -181,18 +266,18 @@ int main() {
 
     const auto C = A.dot(B);
 
-    /*
+
     std::cout << "Result:\n";
-    for (auto &row : C) {
+    for (auto &row : Z) {
         std::cout << "{ ";
         for (auto &val : row) {
             std::cout << val << " ";
         }
         std::cout << "}" << "\n";
     }
-     */
 
-    std::cout << "C = " << C << std::endl;
+
+    std::cout << "Z = " << Z << std::endl;
     return 0;
 }
 

@@ -9,6 +9,11 @@
 #include <string>
 #include <vector>
 
+#include "../TokenEmbeddings/Matrix.h"
+
+#include
+#include
+
 class Tokenizer {
 public:
     // Public datasets so you can pass them explicitly like before if you want
@@ -27,8 +32,10 @@ public:
     // Encoding/decoding/embedding
     static std::vector<int> encodeTokens(std::vector<std::string> tokenVector, const std::string& inFilePath);
     static std::vector<std::string> decodeTokens(std::vector<int> tID, const std::string& inFilePath);
-    static std::vector<std::vector<double>> embedToken(std::vector<int> tID, const std::string& inFilePath);
+    static std::vector<std::vector<double>> embedTokenVector(std::vector<int> tID, const std::string& inFilePath);
     static std::vector<std::string> decodeEmbedToken(const std::vector<std::vector<double> >& tEmbed, const std::string &in);
+
+    static Matrix embedToken(int tID, const std::string &in);
 
 private:
     static std::string toLower(const std::string& s);

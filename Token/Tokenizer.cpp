@@ -10,6 +10,8 @@
 #include <vector>
 #include <sstream>
 #include <string>
+
+
 std::string toLower(const std::string& s);
 
 
@@ -231,7 +233,7 @@ std::vector<std::string> Tokenizer::decodeTokens(std::vector<int> tID, const std
  *
  * @return Word to Vectors
  */
-std::vector<std::vector<double>> Tokenizer::embedToken(std::vector<int> tID, const std::string& in) {
+std::vector<std::vector<double>> Tokenizer::embedTokenVector(std::vector<int> tID, const std::string& in) {
     std::vector<int> tokenIDs = std::move(tID);
     std::unordered_map<int, std::vector<double>> tMap;
 
@@ -315,7 +317,49 @@ std::vector<std::string> Tokenizer::decodeEmbedToken(const std::vector<std::vect
     std::vector<std::string> tokens = decodeTokens(tokensID, in); //decode the IDs easier to search
     return tokens;
 }
+/**
+ *
+ * @param tID A token ID
+ * @param in Provided dictionary of tokens/token ids/token embeddings
+ *
+ * Reads our dictionary
+ * Takes the Token ID
+ * Converts ID into token embeddings
+ *
+ * @return Word to Vector
+ */
 
+Matrix Tokenizer::embedToken(int tID, const std::string &in) {
+    std::ifstream inFile(in);
+    if (!inFile.is_open()) {
+        std::cerr << "Could not open file: " << in << std::endl;
+        return {0, 0};
+    }
+
+    std::string line;
+    while (std::getline(inFile, line)) {
+        size_t tPos = line.find(':');
+        size_t vPos = line.find("<TAB>");
+        if (tPos == std::string::npos || vPos == std::string::npos) continue;
+
+        int id = std::stoi(line.substr(0, tPos));
+        if (id != tID) continue;
+
+        std::stringstream ss(line.substr(vPos + 5));
+        std::vector<double> vec;
+        double x;
+        while (ss >> x) vec.push_back(x);
+
+        Matrix row(1, static_cast<int>(vec.size()));
+        for (int j = 0; j < static_cast<int>(vec.size()); ++j) {
+            row.setValue(0, j, vec[j]);
+        }
+
+        return row;
+    }
+
+    return {0, 0};
+}
 //Stream Operators
 std::ostream &operator<<(std::ostream &os, const std::vector<char> &v) {
     os << "[";

@@ -5,6 +5,7 @@
 #include <set>
 #include <unordered_map>
 #include <ostream>
+#include "../TokenEmbeddings/Matrix.h"
 
 class FileReader{
 public:
@@ -17,6 +18,8 @@ public:
                                    const std::string& tgtFile,
                                    const std::string& corpusFile,
                                    int min_count);
+
+    static Matrix loadEmbeddingsToMatrix(const std::string &path, int vocabSize, int dim);
 
     static std::unordered_map<std::string, double> buildFrequencies(const std::string &inFile);
 

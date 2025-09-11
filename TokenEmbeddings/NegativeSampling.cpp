@@ -3,6 +3,7 @@
 //
 #include "NegativeSampling.h"
 #include "FileReader.h"
+#include "SkipGramModel.h"
 /**
  *
  * @param inFile Corpus (text8)
