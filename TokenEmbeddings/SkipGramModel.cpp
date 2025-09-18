@@ -10,10 +10,6 @@
 #include <iostream>
 #include <random>
 #include <__ostream/basic_ostream.h>
-
-#include "Tokenizer.h"
-
-
 /**
  *
  * @param vS The vocab size (Last Token ID - 5)
@@ -60,35 +56,63 @@ SkipGramModel::SkipGramModel(int vS, const int& d, double lR, int kN ): negative
 double sigmoid(const double x) {
     return 1.0 / (1.0 + exp(-x));
 }
+inline double log_sigmoid(double x) {
+    if (x >= 0) return -std::log1p(std::exp(-x));
+    return x - std::log1p(std::exp(x));
+}
 
-double SkipGramModel::trainPairs(int center, int target) {
-    Matrix centerEmbeddingInLayerRow = embeddingLayerIn.getRowVector(center);
-    Matrix targetEmbeddingOutLayerRow = embeddingLayerOut.getRowVector(target);
+inline double dot(std::span<const double> a, std::span<const double> b) {
+    double result = 0.0;
+    for (size_t i = 0; i < a.size(); i++) {
+        result += a[i] * b[i];
+    }
+    return result;
+}
 
+inline void axpy(const double alpha, const std::span<const double> x, std::span<double> y) {
+    for (size_t i = 0; i < x.size(); i++) {
+        y[i] += alpha * x[i];
+    }
+}
+
+/**
+ *
+ * @param center Center ID
+ * @param target Target ID
+ * @return
+ */
+double SkipGramModel::trainPairs(const int center, const int target) {
+    const auto centerEmbeddingInLayerRow = embeddingLayerIn.rowSpan(center-5);
+    const auto targetEmbeddingOutLayerRow = embeddingLayerOut.rowSpan(target-5);
     std::vector<int> negativeSamples = negativeSampling.vectorSample(kNegatives);
-    negativeSamples.erase(std::remove(negativeSamples.begin(), negativeSamples.end(), target), negativeSamples.end());
-
-    double positiveScore = Matrix::dotRowVector(centerEmbeddingInLayerRow,targetEmbeddingOutLayerRow);
+    negativeSamples.erase(std::ranges::remove(negativeSamples, target).begin(), negativeSamples.end());
+    const double posScore = dot(centerEmbeddingInLayerRow,targetEmbeddingOutLayerRow);
+    const double posLoss = -log_sigmoid(posScore);
+    double negLoss = 0.0;
+    //neg score
     for (const int negativeSample : negativeSamples) {
-        double negativeScore = (Matrix::dotRowVector((Tokenizer::embedToken(negativeSample, "./Files/VocabEmbeddings.txt")),
-                                                     centerEmbeddingInLayerRow));
+        const double negativeScore = (dot((embeddingLayerIn.rowSpan(negativeSample-5)),centerEmbeddingInLayerRow));
+        negLoss += log_sigmoid(-negativeScore);
     }
 
-    double posScoreSigmod = sigmoid(positiveScore);
-    const double posPair = -std::log(posScoreSigmod);
-    double negPair = 0;
+    double lossPair = posLoss + negLoss;
+    std::vector g_vc(centerEmbeddingInLayerRow.size(), 0.0);
+    std::vector g_uo(centerEmbeddingInLayerRow.size(), 0.0);
+    axpy(((sigmoid(posScore)) - 1.0), targetEmbeddingOutLayerRow, g_vc);
+    axpy(((sigmoid(posScore)) - 1.0), centerEmbeddingInLayerRow, g_uo);
+
+    //Gradients
     for (const int negativeSample : negativeSamples) {
-        negPair = std::log(sigmoid(negativeSamples[negativeSample]));
+        auto embeddingN = embeddingLayerOut.rowSpan(negativeSample);
+        const double scalarN = dot(embeddingN, centerEmbeddingInLayerRow);
+        const double gradLoss = sigmoid(scalarN);
+
+        axpy(gradLoss, embeddingN, g_vc);
+        axpy(-learningRate * gradLoss, centerEmbeddingInLayerRow, embeddingN);
     }
 
-    double lossPair = posPair - negPair;
-    for (const int negativeSample : negativeSamples) {
-        Matrix embeddingN = embeddingLayerOut.getRowVector(negativeSample);
-        double scalarN = Matrix::dotRowVector(centerEmbeddingInLayerRow,embeddingN);
-        Matrix gradLoss = Matrix::scaleMatrix((sigmoid(scalarN) - 1), embeddingN.getRowVector(negativeSample));
-        Matrix::addMatrix(gradLoss,Matrix::scaleMatrix(scalarN,embeddingN));
-        Matrix::subtractMatrix(centerEmbeddingInLayerRow,(Matrix::scaleMatrix(learningRate,gradLoss)));
-    }
+    axpy(-learningRate, g_vc, centerEmbeddingInLayerRow);
+    axpy(-learningRate, g_uo, targetEmbeddingOutLayerRow);
 
-    //NOT FINISHED
+    return lossPair;
 }

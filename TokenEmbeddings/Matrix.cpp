@@ -6,6 +6,7 @@
 #include <iostream>
 
 #include "FileReader.h"
+#include <span>
 using namespace std;
 /**
  * Blank Constructor Method
@@ -184,9 +185,6 @@ double Matrix::dotRowVector(const Matrix& m1) const {
     }
     return result;
 }
-
-
-
 /**
  *
  * @param m Matrix u wish to set.
@@ -200,7 +198,7 @@ void Matrix::setMatrixData(vector<vector<double>> m) {
  *
  * @param Set of rows and col to be a certain value
  */
-void Matrix::setValue(int r, int c, double value) {
+void Matrix::setValue(const int r, const int c, const double value) {
     data[r][c] = value;
 }
 /**
@@ -235,14 +233,30 @@ Matrix Matrix::getRowVector(int r) const {
     }
 
     Matrix rowMatrix(1, cols);
-
     for (int j = 0; j < cols; ++j) {
         rowMatrix.setValue(0, j, data[r][j]);  // assuming data[row][col] layout
     }
 
     return rowMatrix;
 }
+/**
+ *
+ * @param r Row index
+ * @return Row without making a copy
+ */
+std::span<double> Matrix::rowSpan(int r) {
+    if (r < 0 || r >= rows) {
+        throw std::out_of_range("row out of range");
+    }
+    return std::span<double>(data[r].data(), cols);
+}
 
+std::span<const double> Matrix::rowSpan(int r) const {
+    if (r < 0 || r >= rows) {
+        throw std::out_of_range("row out of range");
+    }
+    return std::span<const double>(data[r].data(), cols);
+}
 
 ostream operator<<(const ostream & lhs, const Matrix & rhs);
 

@@ -4,6 +4,7 @@
 
 #ifndef MATRIX_H
 #define MATRIX_H
+#include <span>
 #include <vector>
 
 
@@ -22,9 +23,9 @@ class Matrix {
         static Matrix transposeMatrix(const Matrix &m);
         static Matrix broadcastMatrix(const Matrix &m1, const Matrix &m2);
 
-        double dot(const Matrix &m1) const;
+        [[nodiscard]] double dot(const Matrix &m1) const;
 
-        double dotRowVector(const Matrix &m1) const;
+        [[nodiscard]] double dotRowVector(const Matrix &m1) const;
 
         //Getters and Setters
         void setMatrixData(std::vector<std::vector<double>> m);
@@ -33,13 +34,16 @@ class Matrix {
 
         const std::vector<std::vector<double>> &getMatrix();
 
-        int getRow() const;
+        [[nodiscard]] int getRow() const;
 
-        int getCol() const;
+        [[nodiscard]] int getCol() const;
 
-        Matrix getRowVector(int r) const;
+        [[nodiscard]] Matrix getRowVector(int r) const;
 
-        double dotRowVector(const Matrix & m1, const Matrix & matrix);
+        std::span<double> rowSpan(int r);
+
+        [[nodiscard]] std::span<const double> rowSpan(int r) const;;
+
 
     private:
         int rows;
@@ -48,6 +52,4 @@ class Matrix {
 
 };
 
-
-
-#endif //MATRIXES_H
+#endif //MATRIX_H
