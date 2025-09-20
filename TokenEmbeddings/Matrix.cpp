@@ -260,6 +260,7 @@ std::span<const double> Matrix::rowSpan(int r) const {
 
 ostream operator<<(const ostream & lhs, const Matrix & rhs);
 
+/*
 int main() {
     Matrix A(2, 1);
     Matrix B(2, 2);
@@ -294,7 +295,7 @@ int main() {
     std::cout << "Z = " << Z << std::endl;
     return 0;
 }
-
+*/
 
 
 

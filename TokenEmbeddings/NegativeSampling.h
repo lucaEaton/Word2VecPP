@@ -8,7 +8,7 @@
 #include <unordered_map>
 #include <unordered_set>
 
-#include "SkipGramModel.h"
+
 
 class NegativeSampling {
     public:

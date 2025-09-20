@@ -60,9 +60,10 @@ private:
 
 
 //debug main statement
-
+/*
 int main() {
     startingEmbeddings emb("./Files/Vocab.txt","./Files/VocabEmbeddings.txt", 100, -1.0, 1.0, 1353);
     emb.generate();
     return 0;
 }
+*/

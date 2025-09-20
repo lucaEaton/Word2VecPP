@@ -3,7 +3,6 @@
 //
 #include "NegativeSampling.h"
 #include "FileReader.h"
-#include "SkipGramModel.h"
 /**
  *
  * @param inFile Corpus (text8)
@@ -31,13 +30,18 @@ NegativeSampling::NegativeSampling(const std::string& inFile, const double power
     for (const auto& word : newFreq) {
         newFreq[word.first] = word.second / z;
     }
+
+    freq = std::move(newFreq);
+
     //Creates a table of IDs
     constexpr int tableSize = 1e6;
+    table.clear();
     table.reserve(tableSize);
-    int id = 0;
+    int id = 5;
     for (const auto& kv : freq) {
         const double p = kv.second;
-        constexpr int count = static_cast<int>(p * tableSize);
+        int count = static_cast<int>(std::lround(p * tableSize));
+        count = std::max(0, count);
 
         for (int i = 0; i < count; ++i) {
             table.push_back(id);
@@ -45,7 +49,7 @@ NegativeSampling::NegativeSampling(const std::string& inFile, const double power
         ++id;
     }
 
-    freq = std::move(newFreq);
+
 }
 /**
  *

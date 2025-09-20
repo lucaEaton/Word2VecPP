@@ -12,10 +12,18 @@ class SkipGramModel {
     public:
 
     SkipGramModel(int vocabSize, const int &dim, double learningRate, int kNegatives);
+
     double trainPairs(int center, int target);
 
+    double trainOneContextWindow(int centerId, const std::vector<int> &contextIds);
 
-    private:
+    double trainOnCorpus(std::vector<std::vector<int>> sentences, int windowSize, bool shuffle);
+
+    std::span<double> getEmbedding(int wordId);
+
+    bool saveEmbeddings(const std::string &filePath, const std::vector<std::string> &id2word) const;
+
+private:
 
     NegativeSampling negativeSampling;
     Matrix embeddingLayerIn;
