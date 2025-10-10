@@ -1,4 +1,4 @@
-# Word2VecPP
+# Word2Vec++
 
 > Custom C++20 word‑embedding library that tokenizes raw text and trains word vectors with **Skip‑Gram + Negative Sampling** — no external ML frameworks.
 
