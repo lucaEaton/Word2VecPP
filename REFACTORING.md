@@ -1,7 +1,7 @@
 Activing working towards optimizating. This document tracks known performance 
 bottlenecks and correctness issues identified during post-implementation review.
 
-## Issue 1 — O(N) File I/O on Every Lookup
+## Issue 1 — O(N) File I/O on Every Lookup✅
 **Problem:** Every call to `encodeTokens` or `decodeTokens` opens and scans the 
 entire `Vocab.txt` file from disk to build a local `unordered_map`, uses it once, 
 then throws it away. With a ~71k token vocabulary, this means a full file scan on 
