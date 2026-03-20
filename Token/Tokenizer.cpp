@@ -3,8 +3,6 @@
 // edited by luca eaton on 3/20/26
 //
 
-// TODO: replace O(N) file scan with unordered_map lookup
-
 #include "Tokenizer.h"
 #include <iostream>
 #include <fstream>
@@ -66,18 +64,15 @@ void Tokenizer::loadMap(const std::string& in) {
  * if it doesn't find it will push in the token id "4", which means unknown <UNK>
  *
  * @relates Tokenizer::tokenMap
+ * @see template lookup in "Tokenizer.h"
  * @timecomplx O(T) T = tV size;
  * @return tokenIDs : The token IDs of each provided token.
  */
 std::vector<int> Tokenizer::encodeTokens(std::vector<std::string> tV) {
-    const std::vector<std::string> tokens = std::move(tV); // std::move to avoid copy
+    const std::vector<std::string> tokens = std::move(tV);
     std::vector<int> res;
     for (const auto& t : tokens) {
-        if (tokenMap.count(t)) { //check if token exist
-            res.push_back(tokenMap[t]); // push it in result
-        }else {
-            res.push_back(4); // token #4 = "<UNK>, the token is unknown
-        }
+        res.push_back(lookup<std::string, int>(t));
     }
     return res;
 }
@@ -91,20 +86,25 @@ std::vector<int> Tokenizer::encodeTokens(std::vector<std::string> tV) {
  * if it doesn't find it will push in the token representing id "4", which means unknown <UNK>
  *
  * @relates Tokenizer::tokenIDMap
+ * @see template lookup in "Tokenizer.h"
  * @timecomplx O(I) I = tID size
  * @return A decoded vector of tokens from the provided token vector
  */
 std::vector<std::string> Tokenizer::decodeTokens(std::vector<int> tID) {
-    const std::vector<int> tokenIDs= std::move(tID); // std::move to avoid copy
+    const std::vector<int> tokenIDs = std::move(tID);
     std::vector<std::string> res;
     for (const auto& id : tokenIDs) {
-        if (tokenIDMap.count(id)) { //check if token exist
-            res.push_back(tokenIDMap[id]); // push it in result
-        }else {
-            res.push_back(tokenIDMap[4]); // token #4 = "<UNK>, the token is unknown
-        }
+        res.push_back(lookup<int, std::string>(id));
     }
     return res;
+}
+
+/**
+ *
+ * @return the amount of tokens we hold
+ */
+size_t Tokenizer::size() const {
+    return tokenIDMap.size();
 }
 //Stream Operators
 std::ostream &operator<<(std::ostream &os, const std::vector<char> &v) {
