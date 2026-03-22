@@ -19,7 +19,7 @@ public:
                                    const std::string& corpusFile,
                                    int min_count);
 
-    static Matrix loadEmbeddingsToMatrix(const std::string &path, int vocabSize, int dim);
+    static Matrix loadEmbeddingsToMatrix(int vocabSize, int dim = 300);
 
     static std::unordered_map<std::string, double> buildFrequencies(const std::string &inFile);
 

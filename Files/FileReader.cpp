@@ -1,14 +1,21 @@
 //
 // Created by luca eaton and derek zang on 8/15/25.
+// Edited by luca eaton 3/22/26
 //
 
 #include "FileReader.h"
+
+#include <charconv>
+#include <chrono>
 #include <string>
 #include <fstream>
-#include <sstream>
 #include <iostream>
 #include <set>
+#include <unistd.h>
 #include <unordered_set>
+#include <sys/fcntl.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
 /**
  * Normalizes our input to not consider special characters
  *
@@ -17,49 +24,12 @@
  */
 std::string FileReader::removeSP(const std::string &word) {
     std::string result;
-    for (char c : word) {
+    for (const char c : word) {
         if (std::isalpha(static_cast<unsigned char>(c))) {
             result.push_back(std::tolower(c));
         }
     }
     return result;
-}
-/**
- * @breif storing a substring
- *
- * @param word Word
- *
- * Implements Substrings to be stored as tokenIDs
- *
- *
- * @return a vector of words based on their substrings
- */
-std::vector<std::string> FileReader::subStrings(const std::string& word) {
-    static std::vector<std::string> suff = {
-        "s", "es", "ed", "ing", "ly", "er", "or", "ion", "tion", "ation", "ition",
-        "ible", "able", "al", "ial", "y", "ness", "ity", "ment", "ic", "ous", "eous", "ious",
-        "en", "ify", "ise", "ize", "ward", "wise", "hood", "ship", "dom", "ful", "less"
-    };
-    static std::vector<std::string> pre = {
-        "un", "re", "in", "im", "ir", "il", "dis", "en", "em",
-        "non", "over", "mis", "sub", "pre", "inter", "fore", "de",
-        "trans", "super", "semi", "anti", "mid", "under", "over",
-    };
-
-    for (auto& p : pre) {
-        if (word.rfind(p, 0) == 0 && word.size() > p.size()) {
-            return {p, "##" + word.substr(p.size())};
-        }
-    }
-
-    for (auto& s : suff) {
-        if (word.size() > s.size() &&
-            word.compare(word.size()-s.size(), s.size(), s) == 0) {
-            return {word.substr(0, word.size()-s.size()), "##" + s};
-            }
-    }
-
-    return {word};
 }
 /**
  * Store Vocabulary Method
@@ -79,8 +49,7 @@ std::set<std::string> FileReader::storeVocab(const std::string &inFile)
 
     std::string word;
     while (file >> word) {
-        std::string noSP = removeSP(word);
-        if (!noSP.empty()) {
+        if (std::string noSP = removeSP(word); !noSP.empty()) {
             vocab.insert(noSP);
         }
     }
@@ -184,84 +153,41 @@ void FileReader::writeVocabFiltered(const std::set<std::string>& v,const std::st
     outFile.close();
 }
 
-static bool parseDoubles(const std::string& s, std::vector<double>& out, int expectedDim) {
-    std::istringstream iss(s);
-    double x;
-    out.clear();
-    while (iss >> x) out.push_back(x);
-    return static_cast<int>(out.size()) == expectedDim;
-}
-/**
- *
- * @param path File to retrieve Embeddings from
- * @param vocabSize The vocabulary size of tokens (71k-72K)
- * @param dim The Dimension of the matrix embedding
- * @return the embeddings
+/*
+ * run time ~400ms
  */
-Matrix FileReader::loadEmbeddingsToMatrix(const std::string& path, int vocabSize, int dim) {
+Matrix FileReader::loadEmbeddingsToMatrix(const int vocabSize, const int dim) {
+    const std::string& in = ("../Files/VocabEmbeddings.txt");
     Matrix M(vocabSize, dim);
-    std::ifstream in(path);
-    if (!in.is_open()) {
-        throw std::runtime_error("FileReader::loadEmbeddingsToMatrix: could not open " + path);
+    const auto t_start = std::chrono::high_resolution_clock::now();
+    const int fd = open(in.c_str(), O_RDONLY);
+    if (fd == -1) {std::cerr << "file was not accessed" << std::endl; return M;}
+    struct stat sb{}; fstat(fd, &sb);
+    const auto data = static_cast<char *>(mmap(nullptr, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0)); close(fd);
+    if (data == MAP_FAILED) {std::cerr << "mmap failed" << std::endl; return M;}
+    const char *end = data + sb.st_size;
+    const char *byte = data;
+    while (byte < end) {
+        const char *begin = byte;
+        while (begin < end && *begin != '>') ++begin; // find <TAB>
+        const char *currLine = begin;
+        while (currLine < end && *currLine != '\n') ++currLine; // find new line
+        // everything after '<TAB>'
+        const char *num = begin+1;
+        while (num < currLine) {
+            while (num < end && *num == ' ') ++num; //get each num
+            char* endPtr; // reads one value, endPtr is set to where it stopped
+            const double v = strtod(num, &endPtr);
+            if (endPtr == num) break;
+            M.addValue(v);
+            num = endPtr;
+        }
+        byte = currLine + 1;
     }
-
-    std::string line;
-    int lineNo = 0, loaded = 0;
-    std::vector<double> buf; buf.reserve(dim);
-
-    while (std::getline(in, line)) {
-        constexpr int kBaseId = 5;
-        ++lineNo;
-        if (line.empty()) continue;
-
-        const std::string sep = "<TAB>";
-        auto tabPos = line.find(sep);
-        if (tabPos == std::string::npos) {
-            std::cerr << "line " << lineNo << ": missing <TAB>; skipping\n";
-            continue;
-        }
-
-        std::string left  = line.substr(0, tabPos);
-        std::string right = line.substr(tabPos + static_cast<int>(sep.size()));  // <-- skip all 5 chars
-
-        auto colonPos = left.find(':');
-        if (colonPos == std::string::npos) {
-            std::cerr << "[warn] line " << lineNo << ": missing ':'; skipping\n";
-            continue;
-        }
-
-        std::string idStr = left.substr(0, colonPos);
-        int fileId;
-        try {
-            fileId = std::stoi(idStr);
-        } catch (...) {
-            std::cerr << "[warn] line " << lineNo << ": bad id '" << idStr << "'; skipping\n";
-            continue;
-        }
-
-        // map absolute file ID -> zero-based row index
-        const int row = fileId - kBaseId;      // <-- critical fix
-        if (row < 0 || row >= vocabSize) {
-            std::cerr << "[warn] line " << lineNo << ": id " << fileId
-                      << " out of range [" << kBaseId << "," << (kBaseId + vocabSize - 1) << "]; skipping\n";
-            continue;
-        }
-
-        if (!parseDoubles(right, buf, dim)) {
-            std::cerr << "[warn] line " << lineNo << ": expected " << dim
-                      << " floats; got different count; skipping\n";
-            continue;
-        }
-
-        for (int j = 0; j < dim; ++j) {
-            M.setValue(row, j, buf[j]);        // <-- write into zero-based row
-        }
-        ++loaded;
-    }
-
-    if (loaded == 0) {
-        std::cerr << "loaded 0 rows from " << path << "\n";
-    }
+    munmap(data, sb.st_size);
+    const auto t_end = std::chrono::high_resolution_clock::now();
+    const auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t_end - t_start);
+    std::cout << "data loaded: " << M.dataSize() << "| time taken to map tokens: " << duration.count() << "ms" << std::endl;
     return M;
 }
 
