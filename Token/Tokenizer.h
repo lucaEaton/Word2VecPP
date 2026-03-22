@@ -8,28 +8,40 @@
 #include <vector>
 #include <unordered_map>
 #include <type_traits>
+#include <sys/mman.h>
+#include "robin_hood.h"
 
 class Tokenizer {
 public:
     void loadMap(const std::string &in);
+    void loapMapV2(const std::string &in);
     std::vector<int> encodeTokens(std::vector<std::string> tokenVector);
     std::vector<std::string> decodeTokens(std::vector<int> tokenIDS);
-
-    size_t size() const;
+    [[nodiscard]] size_t size() const;
+    ~Tokenizer() {
+        if (mappedData) munmap(mappedData, mappedSize);
+    }
 
 private:
     static std::string toLower(const std::string& s);
-    std::unordered_map<int,std::string> tokenIDMap;
-    std::unordered_map<std::string,int> tokenMap;
+    robin_hood::unordered_map<int, std::string_view> tokenIDMap;
+    robin_hood::unordered_map<std::string_view, int> tokenMap;
+
+    char* mappedData = nullptr;
+    size_t mappedSize = 0;
 
     template <typename Tin, typename Tout>
     Tout lookup(const Tin& input) {
         if constexpr (std::is_same_v<Tin, std::string>) {
-            // input is a string, use tokenMap (word -> id)
-            return tokenMap.count(input) ? tokenMap[input] : 4;
+            // word -> id
+            const std::string_view sv(input);
+            const auto it = tokenMap.find(sv);
+            return it != tokenMap.end() ? it->second : 4;
         } else {
-            // input is an int, use tokenIDMap (id -> word)
-            return tokenIDMap.count(input) ? tokenIDMap[input] : tokenIDMap[4];
+            // id -> word
+            auto it = tokenIDMap.find(input);
+            const std::string_view sv = (it != tokenIDMap.end()) ? it->second : tokenIDMap.at(4);
+            return std::string(sv);
         }
     }
 };

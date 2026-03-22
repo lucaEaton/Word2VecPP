@@ -2,15 +2,20 @@
 // Created by luca eaton and derek zang on 8/14/25.
 // edited by luca eaton on 3/20/26
 //
-
 #include "Tokenizer.h"
+
+#include <charconv>
+#include <chrono>
 #include <iostream>
 #include <fstream>
 #include <map>
 #include <utility>
 #include <vector>
-#include <sstream>
 #include <string>
+#include <sys/mman.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <unistd.h>
 /**
  * toLower Function
  *
@@ -19,9 +24,81 @@
  */
 std::string Tokenizer::toLower(const std::string& str) {
     std::string result = str;
-    std::transform(result.begin(), result.end(), result.begin(),
-                   [](unsigned char c) { return std::tolower(c); });
+    std::ranges::transform(result, result.begin(),
+                           [](const unsigned char c) { return std::tolower(c); });
     return result;
+}
+/**
+ * @brief Loads a token file into memory and builds two lookup tables:
+ *        one for looking up a word by its ID, and one for looking up an ID by its word.
+ *
+ * The file should be formatted where each line looks like:
+ *        5:hello
+ *        6:joe
+ * Where the number on the left is the token ID and the word on the right is the token.
+ *
+ * @param in the path to the token file (e.g. "Vocab.txt")
+ *
+ * @note  First pass, scans the file once just to count how many tokens there are,
+ *                      so we can reserve the exact memory needed upfront (faster).
+ * @note  Second pass, actually reads each line, splits it at the ':', and stores:
+ *                      - tokenIDMap[id]   = word  (give me an ID, I'll give you the word)
+ *                      - tokenMap[word]   = id    (give me a word, I'll give you the ID)
+ *
+ * @note  Uses mmap instead of ifstream to read the file directly from memory,
+ *        which avoids unnecessary data copies and speeds up parsing.
+ *
+ * @note  string_view is used to avoid copying strings during parsing
+ *        each word just points directly into the mapped file memory.
+ *
+ * @warning  if the file can't be opened or mmap fails, an error is printed, function fails.
+ *
+ * @relates Tokenizer::tokenMap      (word → id  lookup table)
+ * @relates Tokenizer::tokenIDMap    (id   → word lookup table)
+ *
+ * @timecomplex O(n), n = # of bytes
+ * @performance  runs in avg ~22ms for 71,294 tokens, which is around ~3.24M tokens/sec
+ */
+void Tokenizer::loapMapV2(const std::string& in) {
+    const auto t_start = std::chrono::high_resolution_clock::now();
+    const int fd = open(in.c_str(), O_RDONLY);
+    if (fd == -1) {std::cerr << "file cannot be opened" << std::endl; return;}
+    struct stat sb{}; fstat(fd, &sb); // struct stat is defined by the OS that holds the metadat
+    const auto data = static_cast<char *>(mmap(nullptr, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0)); close(fd); // closes the file descriptor, alr mapped into memory
+    if (data == MAP_FAILED) std::cerr << "mmap failed" << std::endl;
+    const char *end = data + sb.st_size; // 'data' points to the start of the file, adds the file size in bytes, so this points to one byte past the last character of the file
+    const char *line = data; // moving pointer that starts at the beginning of the file
+    long long count = 0;
+    while (line < end) {
+        const char *tokens = line;
+        while (tokens < end && *tokens != '\n') tokens++;
+        count++;
+        line = tokens + 1;
+    }
+    // pre-allocate that much space
+    tokenIDMap.reserve(count);
+    tokenMap.reserve(count);
+
+    line = data;
+    while (line < end) {
+        const char *currColon = line;
+        while (currColon < end && *currColon != ':') currColon++;
+        const char *currLine = currColon;
+        while (currLine < end && *currLine != '\n') currLine++;
+        int id = 0;
+        std::from_chars(line, currColon, id); // read chars from the first line to currColon.
+        std::string_view word(currColon + 1, currLine - currColon - 1); //stores the word itself
+        tokenIDMap[id] = word;
+        tokenMap[word] = id; //stores pointer
+        line = currLine + 1;
+    }
+    //keeping the map alive for std::string_view
+    mappedData = data;
+    mappedSize = sb.st_size;
+    const auto t_end = std::chrono::high_resolution_clock::now();
+    std::cout << "total tokens loaded : " << tokenIDMap.size() << std::endl;
+    const auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t_end - t_start);
+    std::cout << "time taken to map tokens: " << duration.count() << " ms\n";
 }
 /**
  * @param in tokenID to token reference file
@@ -34,6 +111,7 @@ std::string Tokenizer::toLower(const std::string& str) {
  * @relates Tokenizer::tokenIDMap
  */
 void Tokenizer::loadMap(const std::string& in) {
+    const auto t_start = std::chrono::high_resolution_clock::now();
     std::ifstream ifs(in);
     if (!ifs.is_open()) {
         std::cerr << "file cannot be read. no tokens stored " << std::endl;
@@ -52,7 +130,11 @@ void Tokenizer::loadMap(const std::string& in) {
         tokenIDMap[std::stoi(currentTokenID)] = currentToken;
         tokenMap[toLower(currentToken)] = std::stoi(currentTokenID);
     }
+    const auto t_end = std::chrono::high_resolution_clock::now();
+
+    const auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t_end - t_start);
     std::cout << "total tokens loaded : " << tokenIDMap.size() << std::endl;
+    std::cout << "time taken to map tokens: " << duration.count() << " ms\n";
 }
 /**
  *
@@ -106,70 +188,3 @@ std::vector<std::string> Tokenizer::decodeTokens(std::vector<int> tID) {
 size_t Tokenizer::size() const {
     return tokenIDMap.size();
 }
-//Stream Operators
-std::ostream &operator<<(std::ostream &os, const std::vector<char> &v) {
-    os << "[";
-    for (size_t i = 0; i < v.size(); ++i) {
-        os << "\"" << v[i] << "\"";
-        if (i + 1 < v.size()) os << ",";
-    }
-    os << "]";
-    return os;
-}
-std::ostream &operator<<(std::ostream &os, const std::vector<std::string> &v) {
-    os << "[";
-    for (size_t i = 0; i < v.size(); ++i) {
-        os << "\"" << v[i] << "\"";
-        if (i + 1 < v.size()) os << ",";
-    }
-    os << "]";
-    return os;
-}
-std::ostream &operator<<(std::ostream &os, const std::vector<int> &v) {
-    os << "[";
-    for (size_t i = 0; i < v.size(); ++i) {
-        os << "\"" << v[i] << "\"";
-        if (i + 1 < v.size()) os << ",";
-    }
-    os << "]";
-    return os;
-}
-std::ostream& operator<<(std::ostream& os, const std::vector<double>& v) {
-    os << "[ ";
-    for (double d : v) os << d << " ";
-    os << "]";
-    return os;
-}
-std::ostream& operator<<(std::ostream& os, const std::vector<std::vector<double>>& vv) {
-    os << "{\n";
-    for (const auto& v : vv) {
-        os << "," << v << "\n";  // uses the vector<double> overload above
-    }
-    os << "}";
-    return os;
-}
-
-//Debug Main Function
-
-/*
-int main() {
-    std::string promptedText = "What up future king over here";
-    std::vector<std::string> tokenizedText =  Tokenizer::WTE(promptedText, SP);
-    std::vector<int> tokenIDs = Tokenizer::encodeTokens(tokenizedText, "../Files/VocabEmbeddings.txt");
-    std::vector<std::string> decodedTokens = Tokenizer::decodeTokens(tokenIDs, "../Files/VocabEmbeddings.txt");
-    std::vector<std::vector<double>> embeddedTokens = Tokenizer::embedToken(tokenIDs, "../Files/VocabEmbeddings.txt");
-    std::vector<std::string> decodedTokensEmbed = Tokenizer::decodeEmbedToken(embeddedTokens, "../Files/VocabEmbeddings.txt");
-
-
-    std::cout << "Tokens            : " << tokenizedText << std::endl;
-    std::cout << "Encoded Token IDS : " << tokenIDs << std::endl;
-    std::cout << "Embedded Token    : "  << embeddedTokens << std::endl;
-    std::cout << "Current Embedding Size : 100 DIM" << std::endl;
-    std::cout << "Decoded Token IDS From Embedding  : " << decodedTokensEmbed << std::endl;
-    std::cout << "Decoded Token IDS From Tokens     : " << decodedTokens << std::endl;
-}
-*/
-
-
-
-
