@@ -10,21 +10,16 @@
 
 class Matrix {
     public:
-
         Matrix();
         Matrix(int rows, int cols);
 
-        static Matrix Multiply(const Matrix& m1, const Matrix& m2);
+        void addValue(double val);
+
+        size_t dataSize() const;
+
         static Matrix addMatrix(const Matrix &m1, const Matrix &m2);
-
         static Matrix subtractMatrix(const Matrix &m1, const Matrix &m2);
-
-        static Matrix scaleMatrix(const int &x, const Matrix &m);
-        static Matrix transposeMatrix(const Matrix &m);
-        static Matrix broadcastMatrix(const Matrix &m1, const Matrix &m2);
-
         [[nodiscard]] double dot(const Matrix &m1) const;
-
         [[nodiscard]] double dotRowVector(const Matrix &m1) const;
 
         //Getters and Setters
@@ -32,7 +27,7 @@ class Matrix {
 
         void setValue(int r, int c, double value);
 
-        const std::vector<std::vector<double>> &getMatrix();
+        [[nodiscard]] const std::vector<std::vector<double>> &getMatrix() const;
 
         [[nodiscard]] int getRow() const;
 
@@ -48,7 +43,7 @@ class Matrix {
     private:
         int rows;
         int cols;
-        std::vector<std::vector<double>> data;
+        std::vector<double> data;
 
 };
 
