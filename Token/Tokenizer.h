@@ -14,7 +14,7 @@
 class Tokenizer {
 public:
     void loadMap(const std::string &in);
-    void loapMapV2(const std::string &in);
+    void loapMapV2();
     std::vector<int> encodeTokens(std::vector<std::string> tokenVector);
     std::vector<std::string> decodeTokens(std::vector<int> tokenIDS);
     [[nodiscard]] size_t size() const;

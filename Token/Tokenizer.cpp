@@ -37,15 +37,13 @@ std::string Tokenizer::toLower(const std::string& str) {
  *        6:joe
  * Where the number on the left is the token ID and the word on the right is the token.
  *
- * @param in the path to the token file (e.g. "Vocab.txt")
- *
  * @note  First pass, scans the file once just to count how many tokens there are,
  *                      so we can reserve the exact memory needed upfront (faster).
  * @note  Second pass, actually reads each line, splits it at the ':', and stores:
  *                      - tokenIDMap[id]   = word  (give me an ID, I'll give you the word)
  *                      - tokenMap[word]   = id    (give me a word, I'll give you the ID)
  *
- * @note  Uses mmap instead of ifstream to read the file directly from memory,
+ * @note  Uses mmap instead of std::ifstream to read the file directly from memory,
  *        which avoids unnecessary data copies and speeds up parsing.
  *
  * @note  string_view is used to avoid copying strings during parsing
@@ -59,48 +57,50 @@ std::string Tokenizer::toLower(const std::string& str) {
  * @timecomplex O(n), n = # of bytes
  * @performance  runs in avg ~22ms for 71,294 tokens, which is around ~3.24M tokens/sec
  */
-void Tokenizer::loapMapV2(const std::string& in) {
+void Tokenizer::loapMapV2() {
+    const std::string& in = "../Files/Vocab.txt";
     const auto t_start = std::chrono::high_resolution_clock::now();
-    const int fd = open(in.c_str(), O_RDONLY);
-    if (fd == -1) {std::cerr << "file cannot be opened" << std::endl; return;}
-    struct stat sb{}; fstat(fd, &sb); // struct stat is defined by the OS that holds the metadat
-    const auto data = static_cast<char *>(mmap(nullptr, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0)); close(fd); // closes the file descriptor, alr mapped into memory
+    const int fd = open(in.c_str(), O_RDONLY); // file descriptor, basically a ticket for our OS to read.
+    if (fd == -1) {std::cerr << "file was not accessed" << std::endl; return;}
+    struct stat sb{}; fstat(fd, &sb); // struct stat is defined by the OS that holds the metadata
+    // each char is stored as 1 byte.
+    // closes the file descriptor, alr mapped into memory
+    const auto data = static_cast<char *>(mmap(nullptr, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0)); close(fd);
     if (data == MAP_FAILED) std::cerr << "mmap failed" << std::endl;
     const char *end = data + sb.st_size; // 'data' points to the start of the file, adds the file size in bytes, so this points to one byte past the last character of the file
-    const char *line = data; // moving pointer that starts at the beginning of the file
+    const char *byte = data; // moving pointer that starts at the beginning of the file
     long long count = 0;
-    while (line < end) {
-        const char *tokens = line;
+    while (byte < end) {
+        const char *tokens = byte;
         while (tokens < end && *tokens != '\n') tokens++;
         count++;
-        line = tokens + 1;
+        byte = tokens + 1;
     }
     // pre-allocate that much space
     tokenIDMap.reserve(count);
     tokenMap.reserve(count);
-
-    line = data;
-    while (line < end) {
-        const char *currColon = line;
+    byte = data;
+    while (byte < end) {
+        const char *currColon = byte;
         while (currColon < end && *currColon != ':') currColon++;
         const char *currLine = currColon;
         while (currLine < end && *currLine != '\n') currLine++;
         int id = 0;
-        std::from_chars(line, currColon, id); // read chars from the first line to currColon.
+        std::from_chars(byte, currColon, id); // read chars from the first line to currColon.
         std::string_view word(currColon + 1, currLine - currColon - 1); //stores the word itself
         tokenIDMap[id] = word;
-        tokenMap[word] = id; //stores pointer
-        line = currLine + 1;
+        tokenMap[word] = id; //stores pointer as key
+        byte = currLine + 1;
     }
     //keeping the map alive for std::string_view
     mappedData = data;
     mappedSize = sb.st_size;
     const auto t_end = std::chrono::high_resolution_clock::now();
-    std::cout << "total tokens loaded : " << tokenIDMap.size() << std::endl;
     const auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t_end - t_start);
-    std::cout << "time taken to map tokens: " << duration.count() << " ms\n";
+    std::cout << "total tokens loaded: " << tokenIDMap.size() << " | time taken to map tokens: " << duration.count() << "ms" << std::endl;
 }
 /**
+ * @note OLD DON'T USE THIS METHOD
  * @param in tokenID to token reference file
  *
  * the first run counts the amount of tokens within the reference file
@@ -153,7 +153,8 @@ void Tokenizer::loadMap(const std::string& in) {
 std::vector<int> Tokenizer::encodeTokens(std::vector<std::string> tV) {
     const std::vector<std::string> tokens = std::move(tV);
     std::vector<int> res;
-    for (const auto& t : tokens) {
+    res.reserve(tokens.size());
+for (const auto& t : tokens) {
         res.push_back(lookup<std::string, int>(t));
     }
     return res;
@@ -175,7 +176,8 @@ std::vector<int> Tokenizer::encodeTokens(std::vector<std::string> tV) {
 std::vector<std::string> Tokenizer::decodeTokens(std::vector<int> tID) {
     const std::vector<int> tokenIDs = std::move(tID);
     std::vector<std::string> res;
-    for (const auto& id : tokenIDs) {
+    res.reserve(tokenIDs.size());
+for (const auto& id : tokenIDs) {
         res.push_back(lookup<int, std::string>(id));
     }
     return res;

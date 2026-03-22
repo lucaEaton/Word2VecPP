@@ -1,28 +1,29 @@
 Activing working towards optimizating. This document tracks known performance 
 bottlenecks and correctness issues identified during post-implementation review.
+More issues may be brought to my attention as we perform optimizations.
 
-## Issue 1 — O(N) File I/O on Every Lookup
+## Issue 1 — O(N) File I/O on Every Lookup✅
 **Problem:** Every call to `encodeTokens` or `decodeTokens` opens and scans the 
 entire `Vocab.txt` file from disk to build a local `unordered_map`, uses it once, 
 then throws it away. With a ~71k token vocabulary, this means a full file scan on 
-every invocation — including inside tight loops like `Dataset::vocabToID`, which 
+every invocation, including inside tight loops like `Dataset::vocabToID`, which 
 calls `encodeTokens` once per sentence over a 17M token corpus.
 
 **New Concept** Build the `word -> id` and `id -> word` maps once at startup and store them 
 as static structures. All lookups become O(1) `unordered_map` accesses with zero I/O overhead.
 
 
-## Issue 2 — O(N) File Scan Per Embedding Lookup in Evaluation
+## Issue 2 — O(N) File Scan Per Embedding Lookup in Evaluation ✅
 **Problem:** `vectorRetriever` scans `VocabEmbeddingsTrained.txt` line by line on 
 every call to find a single token's embedding. `nearestNeighbors` calls it once per 
 token in the vocabulary (~71k times), making the function effectively O(N²) in 
 file, as it reads for a single nearest-neighbor query.
 
 **New Concept** Load all embeddings into memory once — either as a flat matrix or something like an
-`unordered_map<int, vector<double>>` — and serve all lookups from RAM. 
+`unordered_map<int, vector<double>>`, and serve all lookups from RAM. 
 `SkipGramModel` already does this correctly with `embeddingLayerIn`; 
 Hoever I believe `Evaluation` should follow the same pattern.
-
+ 
 
 ## Issue 3 —Incorrect ID Assignment in Negative Sampling Table
 **Problem:** The sampling table is built by iterating over an `unordered_map` 
@@ -35,4 +36,17 @@ and the model is training against incorrect targets.
 **Concept** Load the vocabulary with its canonical IDs from `Vocab.txt` first, then 
 build the frequency-weighted table using those IDs directly, the same IDs the 
 rest of the pipeline uses.
+
+## Issue 4 — Matrix Internal Storage is a no-go ✅
+**Problem:** `Matrix` uses `vector<vector<double>>` internally, meaning each row
+is a separate heap allocation scattered across RAM. The embedding matrices are
+71,294 × 100. During training, `trainPairs` calls `rowSpan()`
+hundreds of millions of times across 40 epochs,each call lands on a different
+random memory location, thrashing the CPU cache on every access.
+
+**New Concept:** Replace the internal `vector<vector<double>>` with a single flat
+`vector<double>` of size `rows * cols`, accessed via `data[row * cols + col]`.
+The public API (`rowSpan`, `setValue`, `getRow`, `getCol`) stays identical —
+no other files need to change. All rows become contiguous in memory,
+letting the CPU prefetcher do its job during the hot training loop.
 
