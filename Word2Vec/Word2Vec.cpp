@@ -8,15 +8,26 @@
 #include <iostream>
 
 #include "Dataset.h"
+#include "../Files/FileReader.h"
+#include "../Token/Tokenizer.h"
 #include "../TokenEmbeddings/SkipGramModel.h"
 
 int main() {
-    constexpr int numEpochs = 4;
-    constexpr int vocabSize = 71294;
-    const auto tokens = Dataset::loadText("../Files/text8");
-    const auto tokenIDs = Dataset::vocabToID(tokens,"../Files/Vocab.txt");
+    // std::cout << "test" << std::endl;
+    // Tokenizer t;
+    // t.loapMapV2();
+    // Matrix m = FileReader::loadEmbeddingsToMatrix(static_cast<int>(t.size()),300);
+    // return 0;
 
-    SkipGramModel skipGram(vocabSize - 5 + 1,100,0.0025,3);
+    Tokenizer tokenizer;
+    tokenizer.loapMapV2();
+    constexpr int numEpochs = 40;
+    const size_t vocabSize = tokenizer.size();
+
+    const auto tokens = Dataset::loadText("../Files/text8"); // text 8 tokens
+    const auto tokenIDs = Dataset::vocabToID(tokens,tokenizer); // text 8 token ids
+
+    SkipGramModel skipGram(vocabSize,100,0.0025,3, tokenizer);
 
     std::cout << "Starting Training!"<<std::endl;
     for (int epoch = 0; epoch < numEpochs; epoch++) {

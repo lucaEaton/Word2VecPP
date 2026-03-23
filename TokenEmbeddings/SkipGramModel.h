@@ -6,12 +6,12 @@
 #define SKIPGRAMMODEL_H
 #include "Matrix.h"
 #include "NegativeSampling.h"
-
+#include "../Token/Tokenizer.h"
 
 class SkipGramModel {
     public:
 
-    SkipGramModel(int vocabSize, const int &dim, double learningRate, int kNegatives);
+    SkipGramModel(int vocabSize, const int &dim, double learningRate, int kNegatives, Tokenizer& tokenizer);
 
     double trainPairs(int center, int target);
 

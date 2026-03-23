@@ -7,12 +7,14 @@
 #include <fstream>
 
 #include "NegativeSampling.h"
-#include "FileReader.h"
+#include "../Files/FileReader.h"
 #include "Matrix.h"
-
+#include <algorithm>
+#include <ranges>
 #include <iostream>
 #include <random>
 #include <__ostream/basic_ostream.h>
+
 
 double sigmoid(const double x) {
     return 1.0 / (1.0 + exp(-x));
@@ -40,9 +42,9 @@ inline void axpy(const double alpha, const std::span<const double> x, std::span<
  * @param lR The learning rate of the Skip Gram Model
  * @param kN Sample size of the negative samples "k"
  */
-SkipGramModel::SkipGramModel(int vS, const int& d, double lR, int kN ): negativeSampling("../Files/text8", 0.75){
+SkipGramModel::SkipGramModel(const int vS, const int& d, const double lR, const int kN, Tokenizer& tokenizer ): negativeSampling(tokenizer,0.75){
     embeddingLayerOut = Matrix(vS, d);
-    embeddingLayerIn = FileReader::loadEmbeddingsToMatrix("../Files/VocabEmbeddings.txt",vS,d);
+    embeddingLayerIn = FileReader::loadEmbeddingsToMatrix(vS,d);
     if (vS < 0 || d < 0 || lR < 0 || kN < 0) {
         std::cerr << "vocabSize/dim/learningRate/kNegatives values are invalid" << std::endl;
         return;
