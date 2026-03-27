@@ -4,7 +4,7 @@
 //
 
 #include "FileReader.h"
-
+#include <fast_float/fast_float.h>
 #include <charconv>
 #include <chrono>
 #include <string>
@@ -106,25 +106,6 @@ void FileReader::writeVocab(const std::set<std::string>& v, const std::string &t
 }
 /**
  *
- * @param inFile The file we wish to read
- * @return map of words to freq
- */
-std::unordered_map<std::string, double> FileReader::buildFrequencies(const std::string &inFile) {
-    std::unordered_map<std::string,double> freq;
-    std::ifstream file(inFile);
-    if (!file.is_open()) {
-        std::cerr << "Could not open the file! : Source FileReader.cpp Line:147" << std::endl;
-        return freq;
-    }
-    std::string word;
-    while (file >> word) {
-        std::string w = removeSP(word);
-        if (!w.empty()) ++freq[w];
-    }
-    return freq;
-}
-/**
- *
  * @param v the set of strings from "StoreVocab()"
  * @param tgtFile The file to write to
  * @param corpusFile The file to read from
@@ -152,7 +133,32 @@ void FileReader::writeVocabFiltered(const std::set<std::string>& v,const std::st
     std::cout << "Created ID Tokens Successfully (Min Count Being : " << min_count << ").\n";
     outFile.close();
 }
-
+/**
+ *
+ * @param inFile The file we wish to read
+ * @return map of words to freq
+ */
+robin_hood::unordered_map<std::string, double> FileReader::buildFrequencies(const std::string &inFile) {
+    robin_hood::unordered_map<std::string,double> freq;
+    const int fd = open(inFile.c_str(), O_RDONLY);
+    if (fd == -1) {std::cerr << "file was not accessed" << std::endl; return freq;}
+    struct stat sb{}; fstat(fd, &sb);
+    const auto data = static_cast<char*>(mmap(nullptr, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0));
+    if (data == MAP_FAILED) {std::cerr << "mmap failed" << std::endl; return freq;}
+    const auto *end = data + sb.st_size;
+    const auto *byte = data;
+    while (byte < end) {
+        while (byte < end && isspace(static_cast<unsigned char>(*byte))) byte++; // only for spaces
+        if (byte >= end) break;
+        const char* start = byte;
+        while (byte < end && !isspace(static_cast<unsigned char>(*byte))) byte++;
+        if (byte > start) {
+            std::string wordStr(start, byte - start);
+            freq[wordStr]++;
+        }
+    }
+    return freq;
+}
 /*
  * run time ~400ms
  */
@@ -176,18 +182,17 @@ Matrix FileReader::loadEmbeddingsToMatrix(const int vocabSize, const int dim) {
         const char *num = begin+1;
         while (num < currLine) {
             while (num < end && *num == ' ') ++num; //get each num
-            char* endPtr; // reads one value, endPtr is set to where it stopped
-            const double v = strtod(num, &endPtr);
-            if (endPtr == num) break;
-            M.addValue(v);
-            num = endPtr;
+            double v;
+            auto [ptr, ec] = fast_float::from_chars(num, currLine, v);
+            if (ptr == num) break;
+            num = ptr;
         }
         byte = currLine + 1;
     }
     munmap(data, sb.st_size);
     const auto t_end = std::chrono::high_resolution_clock::now();
     const auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t_end - t_start);
-    std::cout << "data loaded: " << M.dataSize() << "| time taken to map tokens: " << duration.count() << "ms" << std::endl;
+    std::cout << "data loaded: " << M.dataSize() << " | time taken to load embeddings: " << duration.count() << "ms" << std::endl;
     return M;
 }
 

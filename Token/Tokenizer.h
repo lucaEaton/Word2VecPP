@@ -16,6 +16,8 @@ public:
     void loadMap(const std::string &in);
     void loapMapV2();
     std::vector<int> encodeTokens(std::vector<std::string> tokenVector);
+
+    int encodeSingleToken(std::string_view s);
     std::vector<std::string> decodeTokens(std::vector<int> tokenIDS);
     [[nodiscard]] size_t size() const;
     ~Tokenizer() {
@@ -32,14 +34,11 @@ private:
 
     template <typename Tin, typename Tout>
     Tout lookup(const Tin& input) {
-        if constexpr (std::is_same_v<Tin, std::string>) {
-            // word -> id
-            const std::string_view sv(input);
-            const auto it = tokenMap.find(sv);
+        if constexpr (std::is_same_v<Tin, std::string_view>) {
+            const auto it = tokenMap.find(input);
             return it != tokenMap.end() ? it->second : 4;
         } else {
-            // id -> word
-            auto it = tokenIDMap.find(input);
+            const auto it = tokenIDMap.find(input);
             const std::string_view sv = (it != tokenIDMap.end()) ? it->second : tokenIDMap.at(4);
             return std::string(sv);
         }

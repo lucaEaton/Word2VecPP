@@ -6,17 +6,14 @@
 #define NEGATIVESAMPLING_H
 #include <string>
 #include <unordered_map>
-#include <unordered_set>
-
-
+#include <vector>
+#include "../Token/Tokenizer.h"
 
 class NegativeSampling {
     public:
-
-    NegativeSampling(const std::string &inFile, double power);
-    int getSample() const;
-
-    std::vector<int> vectorSample(int k) const;
+    explicit NegativeSampling(Tokenizer& t, double power);
+    [[nodiscard]] int getSample() const;
+    [[nodiscard]] std::vector<int> vectorSample(int k) const;
 private:
 
     std::unordered_map<std::string,double> freq;

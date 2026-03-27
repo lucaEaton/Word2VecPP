@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <ostream>
 #include "../TokenEmbeddings/Matrix.h"
+#include "../Token/robin_hood.h"
 
 class FileReader{
 public:
@@ -21,7 +22,7 @@ public:
 
     static Matrix loadEmbeddingsToMatrix(int vocabSize, int dim = 300);
 
-    static std::unordered_map<std::string, double> buildFrequencies(const std::string &inFile);
+    static robin_hood::unordered_map<std::string, double> buildFrequencies(const std::string &inFile);
 
 };
 

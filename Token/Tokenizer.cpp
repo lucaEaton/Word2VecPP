@@ -66,7 +66,7 @@ void Tokenizer::loapMapV2() {
     // each char is stored as 1 byte.
     // closes the file descriptor, alr mapped into memory
     const auto data = static_cast<char *>(mmap(nullptr, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0)); close(fd);
-    if (data == MAP_FAILED) std::cerr << "mmap failed" << std::endl;
+    if (data == MAP_FAILED) {std::cerr << "mmap failed" << std::endl; return;}
     const char *end = data + sb.st_size; // 'data' points to the start of the file, adds the file size in bytes, so this points to one byte past the last character of the file
     const char *byte = data; // moving pointer that starts at the beginning of the file
     long long count = 0;
@@ -154,10 +154,16 @@ std::vector<int> Tokenizer::encodeTokens(std::vector<std::string> tV) {
     const std::vector<std::string> tokens = std::move(tV);
     std::vector<int> res;
     res.reserve(tokens.size());
-for (const auto& t : tokens) {
-        res.push_back(lookup<std::string, int>(t));
-    }
+    for (const auto& t : tokens) res.push_back(lookup<std::string_view, int>(std::string_view(t)));
     return res;
+}
+/**
+ *
+ * @param s word
+ * @return word id
+ */
+int Tokenizer::encodeSingleToken(std::string_view s) {
+    return lookup<std::string_view, int>(std::string_view(s));
 }
 /**
  *

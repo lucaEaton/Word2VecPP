@@ -2,10 +2,14 @@
 // Created by luca eaton on 8/28/25.
 //
 #include "NegativeSampling.h"
-#include "FileReader.h"
+
+#include <iostream>
+
+#include "../Files/FileReader.h"
+#include <random>
 /**
  *
- * @param inFile Corpus (text8)
+ * @param t
  * @param power usually "0.75"
  *
  * Creates a probability distribution of most common words
@@ -14,42 +18,28 @@
  * Creates a table in order
  *
  */
-NegativeSampling::NegativeSampling(const std::string& inFile, const double power) : power(power){
-    std::unordered_map<std::string, double> newFreq = FileReader::buildFrequencies(inFile);
+NegativeSampling::NegativeSampling(Tokenizer& t, const double power) : power(power){
+    robin_hood::unordered_map<std::string, double> wFreq = FileReader::buildFrequencies("../Files/text8");
     double z = 0;
-    //Formula
-    for ( auto& word : newFreq) {
-        word.second = std::pow(word.second, power);
+    robin_hood::unordered_map<int, double> idFreq;
+    for (const auto& [word, freq] : wFreq) {
+        const auto id = t.encodeTokens({word});
+        if (id[0] == 4) continue;
+        double val = std::pow(freq, power);
+        idFreq[id[0]] = val;
+        z += val;
     }
-    //Sum
-    vocabSize = newFreq.size();
-    for (const auto& word : newFreq) {
-        z += word.second;
-    }
-    //Normalization
-    for (const auto& word : newFreq) {
-        newFreq[word.first] = word.second / z;
-    }
-
-    freq = std::move(newFreq);
-
-    //Creates a table of IDs
-    constexpr int tableSize = 1e6;
+    constexpr int tSize = 1e6;
     table.clear();
-    table.reserve(tableSize);
-    int id = 5;
-    for (const auto& kv : freq) {
-        const double p = kv.second;
-        int count = static_cast<int>(std::lround(p * tableSize));
+    table.reserve(tSize);
+    for (const auto& [id, val] : idFreq) {
+        int count = static_cast<int>(std::lround((val / z) * tSize)); // slot table
         count = std::max(0, count);
-
         for (int i = 0; i < count; ++i) {
-            table.push_back(id);
+            table.push_back(id); //more common words get picked
         }
-        ++id;
     }
-
-
+    vocabSize = idFreq.size();
 }
 /**
  *
@@ -58,7 +48,7 @@ NegativeSampling::NegativeSampling(const std::string& inFile, const double power
  * @return Random Sample
  */
 int NegativeSampling::getSample() const {
-    int r = rand() % table.size();
+    const size_t r = random() % table.size();
     return table[r];
 }
 /**
@@ -69,10 +59,7 @@ int NegativeSampling::getSample() const {
 std::vector<int> NegativeSampling::vectorSample(const int k) const {
     std::vector<int> vectorOfSamples;
     vectorOfSamples.reserve(k);
-    for (int i = 0; i < k; ++i) {
-        vectorOfSamples.push_back(getSample());
-    }
-
+    for (int i = 0; i < k; ++i) vectorOfSamples.push_back(getSample());
     return vectorOfSamples;
 }
 
