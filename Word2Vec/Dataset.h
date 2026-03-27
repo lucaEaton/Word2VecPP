@@ -12,6 +12,8 @@
 class Dataset {
     public:
         static std::vector<std::vector<std::string>> loadText(const std::string &filePath);
+
+        static std::vector<std::vector<int>> loadDataset(const std::string &filePath, Tokenizer &t);
         static std::vector<std::vector<int>> vocabToID(const std::vector<std::vector<std::string>>& tokens, Tokenizer& tokenizer);
         static std::vector<std::vector<std::string>> IDtoVocab(const std::vector<std::vector<int>>& tokens, Tokenizer& tokenizer);
 

@@ -24,15 +24,14 @@ int main() {
     constexpr int numEpochs = 40;
     const size_t vocabSize = tokenizer.size();
 
-    const auto tokens = Dataset::loadText("../Files/text8"); // text 8 tokens
-    const auto tokenIDs = Dataset::vocabToID(tokens,tokenizer); // text 8 token ids
+    const auto tokens = Dataset::loadDataset("../Files/text8",tokenizer); // text 8 tokens
 
     SkipGramModel skipGram(vocabSize,100,0.0025,3, tokenizer);
 
-    std::cout << "Starting Training!"<<std::endl;
+    std::cout << "starting training"<<std::endl;
     for (int epoch = 0; epoch < numEpochs; epoch++) {
 
-        const double loss = skipGram.trainOnCorpus(tokenIDs,3,true);
+        const double loss = skipGram.trainOnCorpus(tokens,3,true);
         std::cout << "Round: " << epoch+1 << " Loss: " << loss <<std::endl;
     }
     std::vector<std::string> id2word;

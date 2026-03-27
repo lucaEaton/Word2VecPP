@@ -4,7 +4,7 @@
 //
 
 #include "FileReader.h"
-
+#include <fast_float/fast_float.h>
 #include <charconv>
 #include <chrono>
 #include <string>
@@ -182,11 +182,10 @@ Matrix FileReader::loadEmbeddingsToMatrix(const int vocabSize, const int dim) {
         const char *num = begin+1;
         while (num < currLine) {
             while (num < end && *num == ' ') ++num; //get each num
-            char* endPtr; // reads one value, endPtr is set to where it stopped
-            const double v = strtod(num, &endPtr);
-            if (endPtr == num) break;
-            M.addValue(v);
-            num = endPtr;
+            double v;
+            auto [ptr, ec] = fast_float::from_chars(num, currLine, v);
+            if (ptr == num) break;
+            num = ptr;
         }
         byte = currLine + 1;
     }

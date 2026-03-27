@@ -11,7 +11,7 @@
 class SkipGramModel {
     public:
 
-    SkipGramModel(int vocabSize, const int &dim, double learningRate, int kNegatives, Tokenizer& tokenizer);
+    SkipGramModel(size_t vocabSize, const int &dim, double learningRate, int kNegatives, Tokenizer& tokenizer);
 
     double trainPairs(int center, int target);
 

@@ -16,24 +16,19 @@
 #include <__ostream/basic_ostream.h>
 
 
-double sigmoid(const double x) {
-    return 1.0 / (1.0 + exp(-x));
-}
-inline double log_sigmoid(double x) {
+double sigmoid(const double x) {return 1.0 / (1.0 + exp(-x));}
+
+inline double log_sigmoid(const double x) {
     if (x >= 0) return -std::log1p(std::exp(-x));
     return x - std::log1p(std::exp(x));
 }
-inline double dot(std::span<const double> a, std::span<const double> b) {
+inline double dot(const std::span<const double> a, const std::span<const double> b) {
     double result = 0.0;
-    for (size_t i = 0; i < a.size(); i++) {
-        result += a[i] * b[i];
-    }
+    for (size_t i = 0; i < a.size(); i++) result += a[i] * b[i];
     return result;
 }
 inline void axpy(const double alpha, const std::span<const double> x, std::span<double> y) {
-    for (size_t i = 0; i < x.size(); i++) {
-        y[i] += alpha * x[i];
-    }
+    for (size_t i = 0; i < x.size(); i++) y[i] += alpha * x[i];
 }
 /**
  *
@@ -42,32 +37,17 @@ inline void axpy(const double alpha, const std::span<const double> x, std::span<
  * @param lR The learning rate of the Skip Gram Model
  * @param kN Sample size of the negative samples "k"
  */
-SkipGramModel::SkipGramModel(const int vS, const int& d, const double lR, const int kN, Tokenizer& tokenizer ): negativeSampling(tokenizer,0.75){
-    embeddingLayerOut = Matrix(vS, d);
-    embeddingLayerIn = FileReader::loadEmbeddingsToMatrix(vS,d);
-    if (vS < 0 || d < 0 || lR < 0 || kN < 0) {
-        std::cerr << "vocabSize/dim/learningRate/kNegatives values are invalid" << std::endl;
-        return;
-    }
-
+SkipGramModel::SkipGramModel(const size_t vS, const int& d, const double lR, const int kN, Tokenizer& tokenizer ): negativeSampling(tokenizer,0.75){
+    if (vS < 0 || d < 0 || lR < 0 || kN < 0) {std::cerr << "vocabSize or dim or learningRate or kNegatives values are invalid" << std::endl; return;}
+    embeddingLayerOut = Matrix(vS, d); // only update when context word
+    embeddingLayerIn = FileReader::loadEmbeddingsToMatrix(vS,d); // only update when center word
     vocabSize = vS;
     dim = d;
     learningRate = lR;
     kNegatives = kN;
-    const int e_inRow = embeddingLayerIn.getRow();
-    const int e_inCol = embeddingLayerIn.getCol();
-    if (e_inRow != vS || e_inCol != d) {
-        std::cerr << "in_embedding layer size invalid " << std::endl;
-        return;
-    }
-
-    const int e_outRow = embeddingLayerOut.getRow();
-    const int e_outCol = embeddingLayerOut.getCol();
-    if (e_outRow != vS || e_outCol != d) {
-        std::cerr << "out_embedding layer size invalid " << std::endl;
-        return;
-    }
-
+    if (embeddingLayerIn.getRow() != vS || embeddingLayerIn.getCol() != d) {std::cerr << "in_embedding layer size invalid " << std::endl; return;}
+    if (embeddingLayerOut.getRow() != vS || embeddingLayerOut.getCol() != d) {std::cerr << "out_embedding layer size invalid " << std::endl; return;}
+    // sets the empty embedding layer out to be filled with random #s
     std::default_random_engine generator(std::random_device{}());
     std::uniform_real_distribution<> distribution(-0.5 / dim, 0.5 / dim);
     for (int i = 0; i < vS; i++) {
@@ -90,25 +70,32 @@ double SkipGramModel::trainPairs(const int center, const int target) {
         return 0.0;
     }
 
-    const auto centerEmbeddingInLayerRow = embeddingLayerIn.rowSpan(c);
-    const auto targetEmbeddingOutLayerRow = embeddingLayerOut.rowSpan(t);
-    std::vector<int> negativeSamples = negativeSampling.vectorSample(kNegatives);
-    negativeSamples.erase(std::ranges::remove(negativeSamples, t).begin(), negativeSamples.end());
-    const double posScore = dot(centerEmbeddingInLayerRow,targetEmbeddingOutLayerRow);
-    const double posLoss = -log_sigmoid(posScore);
-    double negLoss = 0.0;
+    //set-up
+    const auto centerEmbeddingInLayerRow = embeddingLayerIn.rowSpan(c); // gets our center id vector
+    const auto targetEmbeddingOutLayerRow = embeddingLayerOut.rowSpan(t); // gets our context id vector
+    std::vector<int> negativeSamples = negativeSampling.vectorSample(kNegatives); // gathers k negatives
+    negativeSamples.erase(std::ranges::remove(negativeSamples, t).begin(), negativeSamples.end()); // sanity check for if target id appears in negative samples
+    // forward pass
+    // determining how much they align or overlap with the dot product
+    // vectors that point within the same direction are words that would appear near each other, containing a high dot product
+    // vectors that point within opposing directions are words that wouldn't appear near each other, containing a low or even negative dot product
+    const double posLoss = -log_sigmoid(dot(centerEmbeddingInLayerRow,targetEmbeddingOutLayerRow));
     //neg score
+    double negLoss = 0.0;
     for (const int negativeSample : negativeSamples) {
-        if (negativeSample < 0 || negativeSample >= vocabSize) continue;
-        const double negativeScore = (dot((embeddingLayerIn.rowSpan(negativeSample)),centerEmbeddingInLayerRow));
+        if (negativeSample < 0 || negativeSample >= vocabSize || negativeSample == t) continue;
+        const double negativeScore = (dot((embeddingLayerOut.rowSpan(negativeSample)),centerEmbeddingInLayerRow));
         negLoss += log_sigmoid(-negativeScore);
     }
 
-    const double lossPair = posLoss + negLoss;
+    const double lossPair = posLoss - negLoss;
     std::vector gradientVC(centerEmbeddingInLayerRow.size(), 0.0);
     std::vector gradientUO(centerEmbeddingInLayerRow.size(), 0.0);
-    axpy(((sigmoid(posScore)) - 1.0), targetEmbeddingOutLayerRow, gradientVC);
-    axpy(((sigmoid(posScore)) - 1.0), centerEmbeddingInLayerRow, gradientUO);
+    const double posScore = sigmoid(dot(centerEmbeddingInLayerRow, targetEmbeddingOutLayerRow));
+    // gradient for center word vector
+    axpy(posScore - 1.0, targetEmbeddingOutLayerRow, gradientVC);
+    // gradient for target context vector
+    axpy(posScore - 1.0, centerEmbeddingInLayerRow, gradientUO);
 
     //Gradients
     for (const int negativeSample : negativeSamples) {
@@ -116,12 +103,13 @@ double SkipGramModel::trainPairs(const int center, const int target) {
         auto embeddingN = embeddingLayerOut.rowSpan(negativeSample);
         const double scalarN = dot(embeddingN, centerEmbeddingInLayerRow);
         const double gradLoss = sigmoid(scalarN);
-
+        // gradient contribution from each negative sample
         axpy(gradLoss, embeddingN, gradientVC);
         axpy(-learningRate * gradLoss, centerEmbeddingInLayerRow, embeddingN);
     }
-
+    // update center word embedding, being embeddingLayerIn[c]
     axpy(-learningRate, gradientVC, centerEmbeddingInLayerRow);
+    // update target context embedding, being embeddingLayerOut[t]
     axpy(-learningRate, gradientUO, targetEmbeddingOutLayerRow);
 
     return lossPair;
@@ -152,7 +140,7 @@ double SkipGramModel::trainOneContextWindow(int centerId, const std::vector<int>
     return totalLoss / numPairsUsed;
 }
 
-double SkipGramModel::trainOnCorpus( std::vector<std::vector<int>> sentences, const int windowSize, const bool shuffle) {
+double SkipGramModel::trainOnCorpus(std::vector<std::vector<int>> sentences, const int windowSize, const bool shuffle) {
     if (sentences.empty()) return 0.0;
     if (shuffle) {std::mt19937 rng(std::random_device{}()); std::ranges::shuffle(sentences, rng);}
 

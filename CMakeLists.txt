@@ -4,6 +4,10 @@ project(Word2VecPP)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+include(FetchContent)
+FetchContent_Declare(fast_float GIT_REPOSITORY https://github.com/fastfloat/fast_float.git GIT_TAG main)
+FetchContent_MakeAvailable(fast_float)
+
 add_executable(Word2VecPP
         Word2Vec/Word2Vec.cpp
         Word2Vec/Dataset.cpp
@@ -16,3 +20,5 @@ add_executable(Word2VecPP
         TokenEmbeddings/Matrix.cpp
         TokenEmbeddings/startingEmbeddings.cpp
 )
+
+target_link_libraries(Word2VecPP fast_float)

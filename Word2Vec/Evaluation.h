@@ -17,7 +17,7 @@ public:
 
     static double cosineSimilarity(int tokenID1, int tokenID2);
 
-    static std::set<std::pair<std::string, int>> nearestNeighbors(const std::string& targetToken, int k);
+    //static std::set<std::pair<std::string, int>> nearestNeighbors(const std::string& targetToken, int k);
 
 private:
     static std::unordered_map<std::string, double> normCache;

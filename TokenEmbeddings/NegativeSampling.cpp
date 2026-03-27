@@ -2,9 +2,14 @@
 // Created by luca eaton on 8/28/25.
 //
 #include "NegativeSampling.h"
+
+#include <iostream>
+
 #include "../Files/FileReader.h"
+#include <random>
 /**
  *
+ * @param t
  * @param power usually "0.75"
  *
  * Creates a probability distribution of most common words
@@ -43,7 +48,7 @@ NegativeSampling::NegativeSampling(Tokenizer& t, const double power) : power(pow
  * @return Random Sample
  */
 int NegativeSampling::getSample() const {
-    int r = rand() % table.size();
+    const size_t r = random() % table.size();
     return table[r];
 }
 /**
@@ -54,10 +59,7 @@ int NegativeSampling::getSample() const {
 std::vector<int> NegativeSampling::vectorSample(const int k) const {
     std::vector<int> vectorOfSamples;
     vectorOfSamples.reserve(k);
-    for (int i = 0; i < k; ++i) {
-        vectorOfSamples.push_back(getSample());
-    }
-
+    for (int i = 0; i < k; ++i) vectorOfSamples.push_back(getSample());
     return vectorOfSamples;
 }
 
