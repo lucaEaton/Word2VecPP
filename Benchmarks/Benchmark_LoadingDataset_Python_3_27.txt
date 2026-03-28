@@ -1,0 +1,3 @@
+utilising gensim in order to benchmark my custom c++ dataset loader against an "industry standard" loader
+avg time: 803ms
+# of sentences: 1701
